@@ -1,0 +1,1409 @@
+{
+  "updatedAt": "2026-03-14T10:47:22.653Z",
+  "createdAt": "2026-03-13T09:21:12.034Z",
+  "id": "sJsJM1witdVzdBVZ",
+  "name": "Lead Intake → CRM → Follow-Up Engine",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "form": "260281531981053"
+      },
+      "type": "n8n-nodes-base.jotFormTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        32
+      ],
+      "id": "6049bb4e-96eb-499f-a576-06cf3835a731",
+      "name": "Jotform Trigger",
+      "webhookId": "ac4ada1f-ae84-4ade-94a5-4d442cac4c42",
+      "credentials": {
+        "jotFormApi": {
+          "id": "wWfoPuZFI8FMKZSo",
+          "name": "JotForm account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://companyenrichment.abstractapi.com/v2/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "domain",
+              "value": "={{ $json.domain }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        32
+      ],
+      "id": "f580db07-3995-4c8a-bf33-655738ead5f6",
+      "name": "AbstractAPI Enrichment",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "5UUrfoVkBkAEw26o",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst email = (item.json.Email || \"\").trim().toLowerCase();\nconst firstName = (item.json.Name?.first || \"\").trim();\nconst lastName = (item.json.Name?.last || \"\").trim();\nconst name = `${firstName} ${lastName}`.trim();\nconst company = (item.json.Company || \"\").trim();\nconst role = (item.json[\"Role / Title\"] || \"\").trim().toLowerCase();\nconst budget = Number(item.json.Budget) || 0;\nconst domain = email.split(\"@\")[1] || \"\";\n\nreturn {\n    json: {\n        email,\n        name,\n        company,\n        role,\n        budget,\n        domain\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        32
+      ],
+      "id": "6627ac1a-a5fa-4e99-96a1-d944549cd9f7",
+      "name": "JS Normalization"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Inputs from Zap\nconst budget = Number($('JS Normalization').first().json.budget) || 0;\nconst employeeCount = Number($input.first().json.employee_count) || 0;\nconst role = ($('JS Normalization').first().json.role || \"\").toLowerCase();\nconst industry = ($input.first().json.industry || \"\").toLowerCase();\n\n// Base score\nlet score = 0;\n\n// Budget contribution\nif (budget >= 10000) score += 40;\nelse if (budget >= 5000) score += 30;\nelse if (budget >= 1000) score += 20;\nelse score += 10;\n\n// Employee count contribution\nif (employeeCount > 5000) score += 30;\nelse if (employeeCount > 1000) score += 20;\nelse if (employeeCount > 100) score += 10;\n\n// Role contribution\nif (role.includes(\"manager\") || role.includes(\"director\") || role.includes(\"vp\")) score += 20;\nelse score += 10;\n\n// Industry boost\nif (industry.includes(\"software\") || industry.includes(\"tech\")) score += 10;\n\n// Clamp score 0-100\nif (score > 100) score = 100;\n\n// Assign band\nlet band = \"Low\";\nif (score >= 70) band = \"High\";\nelse if (score >= 40) band = \"Medium\";\n\nreturn {\n  json: {\n    score,\n    band,\n    employeeCount: ($input.first().json.employee_count || 0),\n    industry: ($input.first().json.industry || \"\")\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        32
+      ],
+      "id": "11dead7e-027e-4f80-a38e-b5f5abfe5039",
+      "name": "Scoring"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appHamwuXdYD9UbjB",
+          "mode": "list",
+          "cachedResultName": "Example Base",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblbkBqJCIfQhTW3r",
+          "mode": "list",
+          "cachedResultName": "Example Table",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB/tblbkBqJCIfQhTW3r"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Budget": "={{ $('JS Normalization').item.json.budget }}",
+            "Score": "={{ $json.score }}",
+            "Employee Count": "={{ $json.employeeCount }}",
+            "Email": "={{ $('JS Normalization').item.json.email }}",
+            "Name": "={{ $('JS Normalization').item.json.name }}",
+            "Company": "={{ $('JS Normalization').item.json.company }}",
+            "Role": "={{ $('JS Normalization').item.json.role }}",
+            "Band": "={{ $json.band }}",
+            "Industry": "={{ $json.industry }}",
+            "Domain": "={{ $('JS Normalization').item.json.domain }}",
+            "Follow-up Sent": "No",
+            "Slack Notified": "No"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Band",
+              "displayName": "Band",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Employee Count",
+              "displayName": "Employee Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Domain",
+              "displayName": "Domain",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack Notified",
+              "displayName": "Slack Notified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Modified",
+              "displayName": "Last Modified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        896,
+        32
+      ],
+      "id": "750df369-50a2-4cd5-afb2-7c028de62742",
+      "name": "Create or update a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.fields.Band }}",
+                    "rightValue": "High",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4510e4f6-7c0e-44c3-9b37-f73ec73bca34"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "High Priority"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5fe56bc9-c0d0-40e5-89c3-0aaf697ac89d",
+                    "leftValue": "={{ $json.fields.Band }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Medium Priority"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e13b6db9-6757-4d00-9d43-e9be8b4dd1ed",
+                    "leftValue": "={{ $json.fields.Band }}",
+                    "rightValue": "Low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Low Priority"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        16
+      ],
+      "id": "f3a2ad19-e19d-42bb-9f1d-2b341b9fc7ee",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appHamwuXdYD9UbjB",
+          "mode": "list",
+          "cachedResultName": "Example Base",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblbkBqJCIfQhTW3r",
+          "mode": "list",
+          "cachedResultName": "Example Table",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB/tblbkBqJCIfQhTW3r"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Slack Notified": "No",
+            "Follow-up Sent": "No",
+            "id": "={{ $('Create or update a record').item.json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Band",
+              "displayName": "Band",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Employee Count",
+              "displayName": "Employee Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Domain",
+              "displayName": "Domain",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack Notified",
+              "displayName": "Slack Notified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Modified",
+              "displayName": "Last Modified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        224
+      ],
+      "id": "cab3d91b-4e20-4e0d-9168-201bffc41271",
+      "name": "Update record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        32
+      ],
+      "id": "a782950f-b532-4f7d-85f9-3e2de51e6220",
+      "name": "Wait",
+      "webhookId": "50115f05-cba5-4fbe-a866-fc1bbb6a7bfd"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('JS Normalization').item.json.email }}",
+        "subject": "=Thank you {{ $('JS Normalization').item.json.name }}, below are the following steps.",
+        "message": "Example Body.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        32
+      ],
+      "id": "8a6b6559-6ff9-4912-9ec0-2c993fc814bf",
+      "name": "Send a message",
+      "webhookId": "26a4e801-c22d-43bd-98a9-d111524aecd7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "M41hdtJi7pSZjZc2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appHamwuXdYD9UbjB",
+          "mode": "list",
+          "cachedResultName": "Example Base",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblbkBqJCIfQhTW3r",
+          "mode": "list",
+          "cachedResultName": "Example Table",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB/tblbkBqJCIfQhTW3r"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Follow-up Sent": "Yes",
+            "id": "={{ $('Create or update a record').item.json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Band",
+              "displayName": "Band",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Employee Count",
+              "displayName": "Employee Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Domain",
+              "displayName": "Domain",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack Notified",
+              "displayName": "Slack Notified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Modified",
+              "displayName": "Last Modified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1792,
+        32
+      ],
+      "id": "2ed8a97d-2035-4ad7-a6f4-e257e0b31159",
+      "name": "Update record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AC39JH61F",
+          "mode": "list",
+          "cachedResultName": "sales-team"
+        },
+        "text": "=🚀 New High-Priority Lead!\nName: {{ $('JS Normalization').item.json.name }}\nEmail: {{ $('JS Normalization').item.json.email }}\nCompany: {{ $('JS Normalization').item.json.company }}\nRole: {{ $('JS Normalization').item.json.role }}\nBudget: {{ $('JS Normalization').item.json.budget }}\nScore: {{ $('Scoring').item.json.score }}\nBand: {{ $('Scoring').item.json.band }}\nIndustry: {{ $('Scoring').item.json.industry }}\nEmployee Count: {{ $('Scoring').item.json.employeeCount }}\nDomain: {{ $('JS Normalization').item.json.domain }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1344,
+        -160
+      ],
+      "id": "6e52cf2b-6566-4b0c-a156-3c5569fd4167",
+      "name": "Send a message1",
+      "webhookId": "30ab9f22-65b1-4083-831c-181f926dc554",
+      "credentials": {
+        "slackApi": {
+          "id": "c5tzoj3yX0yM2KQi",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('JS Normalization').item.json.email }}",
+        "subject": "=Thank you {{ $('JS Normalization').item.json.name }}, below are the following steps.",
+        "message": "Example Body.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        -160
+      ],
+      "id": "b3247320-66f3-46ee-9ebe-15f449984402",
+      "name": "Send a message2",
+      "webhookId": "26a4e801-c22d-43bd-98a9-d111524aecd7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "M41hdtJi7pSZjZc2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appHamwuXdYD9UbjB",
+          "mode": "list",
+          "cachedResultName": "Example Base",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblbkBqJCIfQhTW3r",
+          "mode": "list",
+          "cachedResultName": "Example Table",
+          "cachedResultUrl": "https://airtable.com/appHamwuXdYD9UbjB/tblbkBqJCIfQhTW3r"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Follow-up Sent": "Yes",
+            "id": "={{ $('Create or update a record').item.json.id }}",
+            "Budget": 0,
+            "Score": 0,
+            "Employee Count": 0,
+            "Slack Notified": "Yes"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Role",
+              "displayName": "Role",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Band",
+              "displayName": "Band",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Employee Count",
+              "displayName": "Employee Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Domain",
+              "displayName": "Domain",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack Notified",
+              "displayName": "Slack Notified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Yes",
+                  "value": "Yes"
+                },
+                {
+                  "name": "No",
+                  "value": "No"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Modified",
+              "displayName": "Last Modified",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1792,
+        -160
+      ],
+      "id": "91034141-2d3e-42a8-878a-6a3ad9719528",
+      "name": "Update record2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Jotform Trigger": {
+      "main": [
+        [
+          {
+            "node": "JS Normalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JS Normalization": {
+      "main": [
+        [
+          {
+            "node": "AbstractAPI Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AbstractAPI Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scoring": {
+      "main": [
+        [
+          {
+            "node": "Create or update a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update a record": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        []
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Update record2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "47e9c9a1-e633-45a7-a56b-40d22f5660c0",
+  "activeVersionId": null,
+  "versionCounter": 304,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-03-13T09:21:12.042Z",
+      "createdAt": "2026-03-13T09:21:12.042Z",
+      "role": "workflow:owner",
+      "workflowId": "sJsJM1witdVzdBVZ",
+      "projectId": "i8s6WjRzOcbmDlU1",
+      "project": {
+        "updatedAt": "2026-03-13T09:19:18.890Z",
+        "createdAt": "2026-03-13T09:09:40.317Z",
+        "id": "i8s6WjRzOcbmDlU1",
+        "name": "Nathan devwedeloper@gmail.com <devwedeloper@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "60f6f711-6d6b-45fe-9fc1-b19cb62eef91"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

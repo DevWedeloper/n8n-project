@@ -1,0 +1,305 @@
+{
+  "updatedAt": "2026-03-13T14:06:15.019Z",
+  "createdAt": "2026-03-13T13:33:19.027Z",
+  "id": "jd5tijXM0R60XQQ4",
+  "name": "AI-Powered Summarizer Workflow",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "form": "260642247825055"
+      },
+      "type": "n8n-nodes-base.jotFormTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5d074061-0508-4cfa-aff2-a7e80e3f6599",
+      "name": "Jotform Trigger",
+      "webhookId": "f8f4a94c-16fe-46da-88d4-384464406a90",
+      "credentials": {
+        "jotFormApi": {
+          "id": "wWfoPuZFI8FMKZSo",
+          "name": "JotForm account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst fullName = (($input.first().json['Full Name'].first || \"\") + \" \" + ($input.first().json['Full Name'].last || \"\")).trim();\n\nconst output = {\n  name: fullName,\n  email: input[\"Email Address\"] || \"\",\n  topic: input[\"Topic\"] || \"\",\n  message: input[\"Message\"] || \"\"\n};\n\nreturn [{ json: output }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e396da1b-023e-4f57-92e4-ca4ae2834cbd",
+      "name": "JS Normalization"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Input:  {{ $('Jotform Trigger').item.json['Full Name'] }}{{ $('Jotform Trigger').item.json['Email Address'] }}{{ $('Jotform Trigger').item.json.Topic }}{{ $('Jotform Trigger').item.json.Message }}\n\nYou are summarizing the users message from a contact us form.\nSummarize the following message in up to 3 bullet points.\n\nMessage: {{ $('Jotform Trigger').item.json.Message }}\n\nReturn:\n- only speak about the message\n- concise bullet points\n- key issue or topic\n- if message lacks context, specify in the summary that it does lack context"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "id": "f36aaadd-d28d-4412-85db-9568a7cfba59",
+      "name": "Summarize Message",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appnQNB6bAeZj26JK",
+          "mode": "list",
+          "cachedResultName": "Contact Us Example",
+          "cachedResultUrl": "https://airtable.com/appnQNB6bAeZj26JK"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblPvdkHz5wYLweBa",
+          "mode": "list",
+          "cachedResultName": "Contact Us",
+          "cachedResultUrl": "https://airtable.com/appnQNB6bAeZj26JK/tblPvdkHz5wYLweBa"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic": "={{ $('JS Normalization').item.json.topic }}",
+            "Submitted By": "={{ $('JS Normalization').item.json.email }}",
+            "Original Message": "={{ $('JS Normalization').item.json.message }}",
+            "Summary": "={{ $json.candidates[0].content.parts[0].text }}",
+            "Created At": "={{ $now.toFormat('MM-dd-yyyy') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Submitted By",
+              "displayName": "Submitted By",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "662ccbb1-a31a-40ac-b9d2-db85589ce5ab",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJZAGN9LJ",
+          "mode": "list",
+          "cachedResultName": "contact-us-reports"
+        },
+        "text": "=New AI Summary Generated\n\nTopic: {{ $('JS Normalization').item.json.topic }}\nSubmitted by: {{ $('JS Normalization').item.json.email }}\n\nSummary:\n{{ $('Summarize Message').item.json.candidates[0].content.parts[0].text }}\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "1ce5fc20-640e-4e0a-9bf0-7181955c1114",
+      "name": "Send a message",
+      "webhookId": "7dc4123a-0912-4f8a-b680-3fce423a5b34",
+      "credentials": {
+        "slackApi": {
+          "id": "17KpRmIklX9T23oZ",
+          "name": "Slack account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Jotform Trigger": {
+      "main": [
+        [
+          {
+            "node": "JS Normalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JS Normalization": {
+      "main": [
+        [
+          {
+            "node": "Summarize Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Message": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "034e2a73-ec2a-4ffa-ba8d-ae90aa4f04f3",
+  "activeVersionId": null,
+  "versionCounter": 120,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-03-13T13:33:19.032Z",
+      "createdAt": "2026-03-13T13:33:19.032Z",
+      "role": "workflow:owner",
+      "workflowId": "jd5tijXM0R60XQQ4",
+      "projectId": "i8s6WjRzOcbmDlU1",
+      "project": {
+        "updatedAt": "2026-03-13T09:19:18.890Z",
+        "createdAt": "2026-03-13T09:09:40.317Z",
+        "id": "i8s6WjRzOcbmDlU1",
+        "name": "Nathan devwedeloper@gmail.com <devwedeloper@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "60f6f711-6d6b-45fe-9fc1-b19cb62eef91"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
