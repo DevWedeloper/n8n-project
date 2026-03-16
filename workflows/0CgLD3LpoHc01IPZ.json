@@ -1,0 +1,189 @@
+{
+  "updatedAt": "2026-03-16T11:27:33.186Z",
+  "createdAt": "2026-03-16T09:59:39.185Z",
+  "id": "0CgLD3LpoHc01IPZ",
+  "name": "Create File to Location",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "06f9f470-797d-4209-b702-a51d3ba92245",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/files/{{ $('Format Content').item.json.filename }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "e832b6ca-dfdf-4f7d-929e-5e49b385b1d8",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "fileContent",
+        "options": {
+          "encoding": "utf8",
+          "fileName": "={{ $json.filename }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "2135b1fd-844a-4519-8cf2-f7ba7b31ae2e",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst now = new Date();\n\n// Convert current time to GMT+8\nconst gmt8Time = new Date(now.getTime() + (8 - now.getTimezoneOffset() / 60) * 60 * 60 * 1000);\n\nconst formatted =\n  gmt8Time.getUTCFullYear() + '-' +\n  String(gmt8Time.getUTCMonth() + 1).padStart(2, '0') + '-' +\n  String(gmt8Time.getUTCDate()).padStart(2, '0') + ' ' +\n  String(gmt8Time.getUTCHours()).padStart(2, '0') + ':' +\n  String(gmt8Time.getUTCMinutes()).padStart(2, '0');\n\nreturn items.map(item => {\n  return {\n    json: {\n      ...item.json,\n      date: formatted\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "89447d48-e186-4ecb-b7c5-f09641b2f5e9",
+      "name": "Sanitize"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"filename\": \"example.md\",\n  \"title\": \"My Markdown File\",\n  \"author\": \"John Doe\",\n  \"date\": \"{{ $now.toISOString() }}\",\n  \"content\": \"This is the main content of the markdown file.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "1317f949-06a3-4e04-acf6-ba1e2725dc27",
+      "name": "Set Dummy Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst frontMatter = `---\ntitle: \"${data.title}\"\nauthor: \"${data.author}\"\ndate: \"${data.date}\"\n---\n\n`;\n\nconst markdownContent = frontMatter + data.content;\n\nreturn [\n  {\n    json: {\n      filename: data.filename,\n      fileContent: markdownContent,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "7d5e5c70-6fde-442b-80f2-625a36e73452",
+      "name": "Format Content"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set Dummy Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize": {
+      "main": [
+        [
+          {
+            "node": "Format Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Dummy Data": {
+      "main": [
+        [
+          {
+            "node": "Sanitize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Content": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "9658f758-8d6d-42e4-960a-a1717971a3d0",
+  "activeVersionId": null,
+  "versionCounter": 158,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-03-16T09:59:39.188Z",
+      "createdAt": "2026-03-16T09:59:39.188Z",
+      "role": "workflow:owner",
+      "workflowId": "0CgLD3LpoHc01IPZ",
+      "projectId": "i8s6WjRzOcbmDlU1",
+      "project": {
+        "updatedAt": "2026-03-13T09:19:18.890Z",
+        "createdAt": "2026-03-13T09:09:40.317Z",
+        "id": "i8s6WjRzOcbmDlU1",
+        "name": "Nathan devwedeloper@gmail.com <devwedeloper@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "60f6f711-6d6b-45fe-9fc1-b19cb62eef91"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
