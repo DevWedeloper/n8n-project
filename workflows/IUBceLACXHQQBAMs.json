@@ -1,0 +1,877 @@
+{
+  "updatedAt": "2026-03-17T07:58:09.130Z",
+  "createdAt": "2026-03-14T14:20:24.775Z",
+  "id": "IUBceLACXHQQBAMs",
+  "name": "YouTube Transcript & Summary",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.standardUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        -48
+      ],
+      "id": "66d19a52-8578-4e69-a21a-789b99da9bdf",
+      "name": "Scraping Video Page"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the innertube API key from the page\nconst html = $input.first().json.data;\nconst videoId = $('Extract YouTube Video ID').first().json.videoId;\n\n// Extract API key with improved regex\nconst apiKeyMatch = html.match(/\"INNERTUBE_API_KEY\":\"\\s*([^\"]+)\"/);\nif (!apiKeyMatch) {\n    throw new Error('Could not find YouTube API key in page. Video may be restricted or unavailable.');\n}\nconst apiKey = apiKeyMatch[1];\n\n// IMPORTANT: Use ANDROID client for better caption availability\nconst context = {\n    client: {\n        clientName: \"ANDROID\",\n        clientVersion: \"20.10.38\",\n        androidSdkVersion: 30,\n        userAgent: \"com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip\",\n        hl: \"en\",\n        timeZone: \"UTC\",\n        utcOffsetMinutes: 0\n    }\n};\n\nreturn [{\n    json: {\n        videoId: videoId,\n        apiKey: apiKey,\n        context: context,\n        preferredLanguage: \"en\"\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -48
+      ],
+      "id": "5a3146be-1a4f-4623-a59d-8b7aee5d7367",
+      "name": "Extract API Info (Android Client)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.youtube.com/youtubei/v1/player",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $json.apiKey }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "={{ $json.context.client.userAgent }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"context\": {{ JSON.stringify($json.context) }},\n  \"videoId\": \"{{ $json.videoId }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        -48
+      ],
+      "id": "5e3da4a8-ce5b-4590-921f-1b72fa5d380c",
+      "name": "Get Player Data (Android)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.selectedTrack.baseUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        -48
+      ],
+      "id": "f5149006-3a9f-461c-b41f-f7682a948093",
+      "name": "Fetch Transcript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Helper function to clean up text ---\nfunction cleanText(text) {\n  return text\n    .replace(/&quot;/g, '\"')\n    .replace(/&#39;/g, \"'\")\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\n// --- Helper function to build the return object ---\nfunction buildOutput(fullText, format) {\n  return [{\n    json: {\n      videoId: videoInfo.videoId,\n      videoTitle: videoInfo.videoTitle || 'Unknown',\n      videoAuthor: videoInfo.videoAuthor || 'Unknown',\n      channelId: videoInfo.channelId || '',\n      viewCount: videoInfo.viewCount || '0',\n      language: videoInfo.selectedTrack.language,\n      languageName: videoInfo.selectedTrack.name,\n      transcriptType: videoInfo.trackType,\n      fullText,\n      metadata: {\n        videoUrl: `https://www.youtube.com/watch?v=${videoInfo.videoId}`,\n        channelUrl: videoInfo.channelId ? `https://www.youtube.com/channel/${videoInfo.channelId}` : '',\n        fetchedAt: new Date().toISOString(),\n        format\n      }\n    }\n  }];\n}\n\n// --- Main logic ---\nconst transcriptData = $input.first().json;\nconst videoInfo = $('Extract Caption Info (Enhanced)').first().json;\n\nlet fullText = '';\n\nif (typeof transcriptData === 'string' || (transcriptData.data && typeof transcriptData.data === 'string')) {\n  // --- XML handling ---\n  const xmlData = transcriptData.data || transcriptData;\n\n  const paragraphRegex = /<p\\s+t=\"(\\d+)\"(?:\\s+d=\"(\\d+)\")?[^>]*>(.*?)<\\/p>/gs;\n  let paragraphMatch;\n\n  while ((paragraphMatch = paragraphRegex.exec(xmlData)) !== null) {\n    const content = paragraphMatch[3];\n    if (!content || content.trim() === '' || content.includes('a=\"1\"')) continue;\n\n    const segments = [...content.matchAll(/<s(?:\\s+[^>]*)?>([^<]*)<\\/s>/g)];\n    let paragraphText = segments.map(s => s[1]).join('');\n    paragraphText = cleanText(paragraphText);\n\n    if (paragraphText) fullText += paragraphText + ' ';\n  }\n\n  fullText = cleanText(fullText);\n  if (!fullText) throw new Error('No transcript text could be extracted from the XML data');\n\n  return buildOutput(fullText, 'XML');\n\n} else {\n  // --- JSON handling ---\n  let events = [];\n  if (transcriptData.events) events = transcriptData.events;\n  else if (transcriptData.transcript) events = transcriptData.transcript.events || [];\n  else if (Array.isArray(transcriptData)) events = transcriptData;\n\n  if (events.length === 0) throw new Error('Transcript data is empty or in unexpected format');\n\n  for (const event of events) {\n    if (!event.segs && !event.text) continue;\n\n    if (event.segs) {\n      const segmentText = event.segs.map(seg => seg.utf8 || '').join('');\n      if (segmentText.trim()) fullText += segmentText.trim() + ' ';\n    } else if (event.text) {\n      fullText += event.text.trim() + ' ';\n    }\n  }\n\n  fullText = cleanText(fullText);\n  return buildOutput(fullText, 'JSON');\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -48
+      ],
+      "id": "9867c80a-5cf9-4239-9bde-2af97cc65946",
+      "name": "Process Transcript"
+    },
+    {
+      "parameters": {
+        "formTitle": "Get YouTube Transcript",
+        "formDescription": "Get any YouTube transcript by dropping the link.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "YouTube Video URL",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Get the Transcript"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "8100306f-23ef-46c3-98f5-8f66c9e71934",
+      "name": "On form submission",
+      "webhookId": "b4905323-7c74-45aa-ac49-387500b05db0"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst youtubeUrl = item.json['YouTube Video URL'] || '';\n\nlet videoId = null;\n\n// Try each pattern until we find a match\nconst patterns = [\n  /[?&]v=([a-zA-Z0-9_-]{11})/,   // youtube.com/watch?v=\n  /youtu\\.be\\/([a-zA-Z0-9_-]{11})/, // youtu.be/\n  /embed\\/([a-zA-Z0-9_-]{11})/,  // youtube.com/embed/\n  /shorts\\/([a-zA-Z0-9_-]{11})/, // youtube.com/shorts/\n  /live\\/([a-zA-Z0-9_-]{11})/,   // youtube.com/live/\n];\n\nfor (const pattern of patterns) {\n  const match = youtubeUrl.match(pattern);\n  if (match) {\n    videoId = match[1];\n    break;\n  }\n}\n\n// Check if it's already just the video ID\nif (!videoId && /^[a-zA-Z0-9_-]{11}$/.test(youtubeUrl.trim())) {\n  videoId = youtubeUrl.trim();\n}\n\nitem.json.videoId = videoId;\nitem.json.standardUrl = videoId\n  ? `https://www.youtube.com/watch?v=${videoId}`\n  : null;\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -48
+      ],
+      "id": "edfb5945-3737-4748-80ae-4a69ab12c318",
+      "name": "Extract YouTube Video ID"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appTKRYLG56dPQKmh",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblXGoCPHhwqXCRHL",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh/tblXGoCPHhwqXCRHL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $('Get Player Data (Android)').item.json.videoDetails.title }}",
+            "Creator": "={{ $('Get Player Data (Android)').item.json.videoDetails.author }}",
+            "Video URL": "={{ $('Extract YouTube Video ID').item.json['YouTube Video URL'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Creator",
+              "displayName": "Creator",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Video URL",
+              "displayName": "Video URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcripts",
+              "displayName": "Transcripts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcript (from Transcripts)",
+              "displayName": "Transcript (from Transcripts)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1792,
+        -48
+      ],
+      "id": "20de4d4a-d7b9-4281-a6f5-05aff06407d9",
+      "name": "Create New Video Record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the transcript\nconst transcript = $('Process Transcript').first().json.fullText;\n\n// Parameters\nconst maxChunkSize = 12000;\nconst overlapFraction = 0.15;\nconst overlapSize = Math.floor(maxChunkSize * overlapFraction);\n\n// Arrays to hold results\nconst simpleChunks = [];\nconst overlappedChunks = [];\n\n// --- SIMPLE CHUNKING ---\nfor (let start = 0; start < transcript.length; start += maxChunkSize) {\n    const chunk = transcript.slice(start, start + maxChunkSize);\n    simpleChunks.push(chunk);\n}\n\n// --- OVERLAPPED CHUNKING ---\nfor (let start = 0; start < transcript.length; start += (maxChunkSize - overlapSize)) {\n    const chunk = transcript.slice(start, start + maxChunkSize);\n    overlappedChunks.push(chunk);\n}\n\n// Combine into single array of objects for Airtable, adding order\nconst items = overlappedChunks.map((chunk, index) => {\n    return {\n        json: {\n            order: index + 1,\n            transcriptChunk: simpleChunks[index] || '', // optional fallback\n            transcriptOverlappedChunk: chunk\n        }\n    };\n});\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        -48
+      ],
+      "id": "591e70c2-3573-417f-8f59-e44f46297386",
+      "name": "Chunk Transcript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced caption extraction with better error handling\nconst playerData = $json;\nconst preferredLanguage = $node[\"Extract API Info (Android Client)\"].json.preferredLanguage;\n\n// Check multiple possible locations for captions\nlet captionTracks = null;\n\n// Try primary location\nif (playerData.captions && playerData.captions.playerCaptionsTracklistRenderer) {\n  captionTracks = playerData.captions.playerCaptionsTracklistRenderer.captionTracks;\n}\n\n// Check if video is available and has captions\nif (playerData.playabilityStatus) {\n  if (playerData.playabilityStatus.status === 'UNPLAYABLE') {\n    throw new Error(`Video is unplayable: ${playerData.playabilityStatus.reason || 'Unknown reason'}`);\n  }\n  if (playerData.playabilityStatus.status === 'ERROR') {\n    throw new Error(`Video error: ${playerData.playabilityStatus.reason || 'Unknown error'}`);\n  }\n}\n\nif (!captionTracks || captionTracks.length === 0) {\n  // Provide helpful error message\n  const videoTitle = playerData.videoDetails?.title || 'Unknown video';\n  const videoId = $node[\"Extract API Info (Android Client)\"].json.videoId;\n  \n  throw new Error(\n    `No captions available for video: \"${videoTitle}\" (ID: ${videoId}). ` +\n    `This video may not have subtitles/captions enabled, or they may be restricted. ` +\n    `Try a different video or check if the video has CC available on YouTube.`\n  );\n}\n\n// Process available tracks\nconst availableTracks = captionTracks.map(track => ({\n  language: track.languageCode,\n  name: track.name?.simpleText || track.name?.runs?.[0]?.text || track.languageCode,\n  baseUrl: track.baseUrl,\n  isTranslatable: track.isTranslatable || false,\n  kind: track.kind || track.vssId?.includes('.a.') ? 'automatic' : 'standard',\n  vssId: track.vssId\n}));\n\n// Find the preferred language track\nlet selectedTrack = availableTracks.find(track => \n  track.language === preferredLanguage || \n  track.language.startsWith(preferredLanguage + '-')\n);\n\n// Fallback to English if preferred not found\nif (!selectedTrack && preferredLanguage !== 'en') {\n  selectedTrack = availableTracks.find(track => \n    track.language === 'en' || \n    track.language.startsWith('en-')\n  );\n}\n\n// Use first available if still not found\nif (!selectedTrack) {\n  selectedTrack = availableTracks[0];\n}\n\n// Add format parameter for better output\n// selectedTrack.baseUrl += '&fmt=json3';\n\nreturn [{\n  json: {\n    videoId: $node[\"Extract API Info (Android Client)\"].json.videoId,\n    videoTitle: playerData.videoDetails?.title || 'Unknown',\n    videoAuthor: playerData.videoDetails?.author || 'Unknown',        // ADDED\n    channelId: playerData.videoDetails?.channelId || '',              // ADDED\n    viewCount: playerData.videoDetails?.viewCount || '0',             // ADDED (optional)\n    videoDuration: playerData.videoDetails?.lengthSeconds || 0,\n    selectedTrack: selectedTrack,\n    availableTracks: availableTracks,\n    totalTracks: availableTracks.length,\n    trackType: selectedTrack.kind\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -48
+      ],
+      "id": "3d69d262-c8b5-49d5-a77a-1c1bb8658cdf",
+      "name": "Extract Caption Info (Enhanced)"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appTKRYLG56dPQKmh",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblm2wsLz3cLGufeI",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh/tblm2wsLz3cLGufeI"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.order }} - {{ $('Process Transcript').item.json.videoTitle }}",
+            "Chunk Order": "={{ $('Chunk Transcript').item.json.order }}",
+            "Transcript Chunk": "={{ $('Chunk Transcript').item.json.transcriptChunk }}",
+            "Transcript Overlapped Chunk": "={{ $('Chunk Transcript').item.json.transcriptOverlappedChunk }}",
+            "Videos": "={{ [$('Create New Video Record').item.json.id] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcript Chunk",
+              "displayName": "Transcript Chunk",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcript Overlapped Chunk",
+              "displayName": "Transcript Overlapped Chunk",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Chunk Order",
+              "displayName": "Chunk Order",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Videos",
+              "displayName": "Videos",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2240,
+        -48
+      ],
+      "id": "7fef95f4-09a7-4b84-ae29-e90950735275",
+      "name": "Create Transcript Chunks",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are summarizing a chunk of a longer transcript.\n\nTranscript chunk:\n{{ $json.transcript }}\n\nWrite a concise summary of the important information in this chunk.\n\nRules:\n\n* Capture the key ideas and important details\n* Do not repeat sentences from the transcript\n* Keep the summary clear and concise\n* Focus only on information present in this chunk\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2688,
+        -48
+      ],
+      "id": "66af7cfe-2b2a-4630-9fe8-26d00fd1c754",
+      "name": "Summarize Chunk",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appTKRYLG56dPQKmh",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblXGoCPHhwqXCRHL",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh/tblXGoCPHhwqXCRHL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $json.content.parts[0].text }}",
+            "id": "={{ $node[\"Create New Video Record\"].json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Creator",
+              "displayName": "Creator",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Video URL",
+              "displayName": "Video URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcripts",
+              "displayName": "Transcripts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcript Chunk Rollup (from Transcripts)",
+              "displayName": "Transcript Chunk Rollup (from Transcripts)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        3616,
+        -48
+      ],
+      "id": "d1e36187-9567-4d77-8993-7dc06cebf46f",
+      "name": "Update Summary Column",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all incoming items\nconst allItems = $input.all();\n\n// Collect summaries into an array\nconst summaries = allItems.map(item => item.json.content.parts[0].text);\n\n// Return as a single item\nreturn [\n  {\n    json: {\n      summary: summaries\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        -48
+      ],
+      "id": "35b48f53-a3cf-4a1e-ba9d-ce8d315fa0d8",
+      "name": "Combine Summaries"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are given summaries of multiple chunks from the same transcript.\n\nChunk summaries:\n{{ JSON.stringify($json) }}\n\nWrite a single cohesive summary of the entire transcript.\n\nInstructions:\n\n* Combine overlapping or repeated ideas\n* Organize the information logically\n* Preserve important details and insights\n* Do not mention chunks or the summarization process\n* Produce a clear, well-structured final summary\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        3264,
+        -48
+      ],
+      "id": "04883bfc-4343-4ea9-a16b-c9ce5f728bbf",
+      "name": "Summarize All Summaries",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Get YouTube Transcript",
+        "height": 256,
+        "width": 1792
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -64,
+        -144
+      ],
+      "typeVersion": 1,
+      "id": "087b95cc-b068-4f00-b2c5-360affa15126",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# Create Airtable Record",
+        "height": 256,
+        "width": 672,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1728,
+        -144
+      ],
+      "id": "12af7813-6fc1-4fb5-b24b-af2e998bf53a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Create Summary Record",
+        "height": 256,
+        "width": 1376,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        -144
+      ],
+      "id": "dec6b06e-e1a8-4e85-889c-1f084a04fb23",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst OVERLAP_PERCENT = 0.15;      // 15% of second chunk to remove\nconst CHUNKS_PER_COMBINE = 4;       // Number of chunks to combine per pair\nconst combinedChunks = [];\n\nfor (let i = 0; i < items.length; i += CHUNKS_PER_COMBINE) {\n    let combined = items[i].json.fields['Transcript Overlapped Chunk'];\n\n    // Combine up to next CHUNKS_PER_COMBINE - 1 chunks\n    for (let j = 1; j < CHUNKS_PER_COMBINE && i + j < items.length; j++) {\n        const nextChunk = items[i + j].json.fields['Transcript Overlapped Chunk'];\n        const sliceIndex = Math.floor(nextChunk.length * OVERLAP_PERCENT);\n        combined += nextChunk.slice(sliceIndex);\n    }\n\n    combinedChunks.push({ json: { transcript: combined } });\n}\n\nreturn combinedChunks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -48
+      ],
+      "id": "1077368f-b7b3-4b6f-a833-570cb3d4311f",
+      "name": "Combine X Amount Of Transcript Chunks"
+    }
+  ],
+  "connections": {
+    "Scraping Video Page": {
+      "main": [
+        [
+          {
+            "node": "Extract API Info (Android Client)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract API Info (Android Client)": {
+      "main": [
+        [
+          {
+            "node": "Get Player Data (Android)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Player Data (Android)": {
+      "main": [
+        [
+          {
+            "node": "Extract Caption Info (Enhanced)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transcript": {
+      "main": [
+        [
+          {
+            "node": "Process Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Transcript": {
+      "main": [
+        [
+          {
+            "node": "Create New Video Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract YouTube Video ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract YouTube Video ID": {
+      "main": [
+        [
+          {
+            "node": "Scraping Video Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create New Video Record": {
+      "main": [
+        [
+          {
+            "node": "Chunk Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Transcript": {
+      "main": [
+        [
+          {
+            "node": "Create Transcript Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Caption Info (Enhanced)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Transcript Chunks": {
+      "main": [
+        [
+          {
+            "node": "Combine X Amount Of Transcript Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Chunk": {
+      "main": [
+        [
+          {
+            "node": "Combine Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Summaries": {
+      "main": [
+        [
+          {
+            "node": "Summarize All Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize All Summaries": {
+      "main": [
+        [
+          {
+            "node": "Update Summary Column",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine X Amount Of Transcript Chunks": {
+      "main": [
+        [
+          {
+            "node": "Summarize Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "5c491bda-4e13-4b5f-9f7c-6b5c75c0fa5c",
+  "activeVersionId": null,
+  "versionCounter": 548,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-03-14T14:20:24.781Z",
+      "createdAt": "2026-03-14T14:20:24.781Z",
+      "role": "workflow:owner",
+      "workflowId": "IUBceLACXHQQBAMs",
+      "projectId": "i8s6WjRzOcbmDlU1",
+      "project": {
+        "updatedAt": "2026-03-13T09:19:18.890Z",
+        "createdAt": "2026-03-13T09:09:40.317Z",
+        "id": "i8s6WjRzOcbmDlU1",
+        "name": "Nathan devwedeloper@gmail.com <devwedeloper@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "60f6f711-6d6b-45fe-9fc1-b19cb62eef91"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
