@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-17T11:53:50.085Z",
+  "updatedAt": "2026-03-17T14:11:04.383Z",
   "createdAt": "2026-03-17T11:13:28.066Z",
   "id": "3ucJzoASNnlAR6T0",
   "name": "Summarize Transcript",
@@ -7,33 +7,6 @@
   "active": false,
   "isArchived": false,
   "nodes": [
-    {
-      "parameters": {
-        "formTitle": "Summarize Transcript",
-        "formDescription": "Summarizes the transcript for a specified ID.",
-        "formFields": {
-          "values": [
-            {
-              "fieldLabel": "ID",
-              "placeholder": "Enter the Record ID.",
-              "requiredField": true
-            }
-          ]
-        },
-        "options": {
-          "buttonLabel": "Submit"
-        }
-      },
-      "type": "n8n-nodes-base.formTrigger",
-      "typeVersion": 2.5,
-      "position": [
-        0,
-        0
-      ],
-      "id": "dbc235bd-b518-438f-8f92-217d582db583",
-      "name": "On form submission",
-      "webhookId": "b1b99359-c115-4e8b-8201-bf9f32c24d90"
-    },
     {
       "parameters": {
         "operation": "search",
@@ -63,8 +36,8 @@
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2.1,
       "position": [
-        224,
-        0
+        400,
+        -480
       ],
       "id": "2f59440c-f0d6-454b-ba4a-0ebf04c8e2d3",
       "name": "Search record with ID",
@@ -109,8 +82,8 @@
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2.1,
       "position": [
-        448,
-        0
+        624,
+        -480
       ],
       "id": "cc27958a-73ae-4d0a-95b3-30e1e9b35549",
       "name": "List all transcripts",
@@ -132,7 +105,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are summarizing a chunk of a longer transcript into a **structured, academic lecture-note style**.\n\nTranscript chunk:\n{{ $json.transcript }}\n\nInstructions:\n\n1. Use **numbered sections** with clear headings for main topics or themes in the chunk.  \n2. Use **bullet points** to present key ideas, examples, and important details.  \n3. Be **objective and descriptive**; do not interpret or speculate beyond what is in the transcript.  \n4. Include **relevant examples** when they clarify a point.  \n5. Keep the summary **clear, concise, and skimmable**, suitable for lecture notes or study guides.  \n6. Avoid repeating sentences verbatim from the transcript.  \n7. Focus **only on information present in this chunk**.\n\nOutput format should resemble structured lecture notes with headings and bullets."
+              "content": "=You are summarizing a chunk of a longer transcript into a **structured, clear, and concise style**.\n\nTranscript chunk:\n{{ $json.transcript }}\n\nInstructions:\n\n1. Use **bullet points** to present key ideas, examples, and important details.  \n2. Be **objective and descriptive**; do not interpret or speculate beyond what is in the transcript.  \n3. Include **relevant examples** when they clarify a point.  \n4. Focus **only on information present in this chunk**."
             }
           ]
         },
@@ -142,8 +115,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.1,
       "position": [
-        896,
-        0
+        1072,
+        -480
       ],
       "id": "3f1d0624-5711-49a2-bc4b-b485ce12b3f2",
       "name": "Summarize Chunk",
@@ -277,8 +250,8 @@
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2.1,
       "position": [
-        1824,
-        0
+        2000,
+        -480
       ],
       "id": "d197bc51-c84f-49da-bdea-dc84233d4a6a",
       "name": "Update Summary Column",
@@ -296,8 +269,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1248,
-        0
+        1424,
+        -480
       ],
       "id": "e9395303-d36e-46e7-a755-0950fc62d214",
       "name": "Combine Summaries"
@@ -313,7 +286,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are given summaries of multiple chunks from the same transcript. Your goal is to produce a **single, cohesive, structured lecture-note style summary** of the entire transcript.\n\nChunk summaries:\n{{ JSON.stringify($json) }}\n\nInstructions:\n\n1. Organize the summary into **numbered sections with headings**, reflecting major themes or topics across the chunks.  \n2. Use **bullet points** for key ideas, examples, and supporting details.  \n3. Be **objective and descriptive**; avoid personal interpretation or speculative reasoning.  \n4. Include **relevant examples** when they clarify a point.  \n5. Maintain **clarity and skimmability**, suitable for lecture notes or study guides.  \n6. Combine overlapping or repeated ideas **without redundancy**.  \n7. Preserve important details and insights.  \n8. Do **not** mention chunks, their summaries, or the summarization process.\n\nOutput should read like a polished set of structured lecture notes."
+              "content": "=You are given summaries of multiple chunks from the same transcript. Your goal is to produce a **single, clear, and concise style summary** of the entire transcript.\n\nChunk summaries: {{ JSON.stringify($json) }}\n\n## Instructions\n\n1. **Organize the summary into numbered sections with headings**, reflecting major themes or topics across the chunks. Prefer using clear Markdown headings for each section.  \n2. **Use bullet points** for key ideas, examples, and supporting details.  \n   - If a bullet point feels too heavy, **use sub-bullets** instead of turning it into a mini-paragraph. Prefer sub-bullets for clarity and skimmability.  \n   - Use **punchy, concise sentences** to keep points sharp and easy to scan.  \n3. Be **objective and descriptive**; avoid personal interpretation or speculative reasoning.  \n4. Include **relevant examples** when they clarify a point.  \n5. Maintain **clarity and skimmability** throughout.  \n6. Combine overlapping or repeated ideas **without redundancy**.  \n7. Preserve important details and insights.  \n8. Do **not** mention chunks, their summaries, or the summarization process.  \n9. Add a **key takeaways** section if necessary to reinforce understanding or highlight essential points.  "
             }
           ]
         },
@@ -323,8 +296,8 @@
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.1,
       "position": [
-        1472,
-        0
+        1648,
+        -480
       ],
       "id": "531745b3-0c26-463f-ad62-6c59ca25c54d",
       "name": "Summarize All Summaries",
@@ -342,25 +315,41 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        0
+        848,
+        -480
       ],
       "id": "82142d1f-6300-4c41-8865-e467a6f3787f",
       "name": "Combine X Amount Of Transcript Chunks"
+    },
+    {
+      "parameters": {
+        "formTitle": "Summarize Transcript",
+        "formDescription": "Summarizes the transcript for a specified ID.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "ID",
+              "placeholder": "Enter the Record ID.",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Submit"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        176,
+        -480
+      ],
+      "id": "324f763e-09f1-4bb1-aa26-27dea1aa0e7f",
+      "name": "On form submission",
+      "webhookId": "98306374-b2dc-44ad-8e39-a60b4a6d3be8"
     }
   ],
   "connections": {
-    "On form submission": {
-      "main": [
-        [
-          {
-            "node": "Search record with ID",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Search record with ID": {
       "main": [
         [
@@ -426,6 +415,17 @@
           }
         ]
       ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Search record with ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -438,9 +438,9 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "249af633-c0f9-4c89-aaea-af3acefad7fd",
+  "versionId": "7621eff0-d106-4533-98ae-57ba43866b94",
   "activeVersionId": null,
-  "versionCounter": 111,
+  "versionCounter": 183,
   "triggerCount": 0,
   "tags": [],
   "shared": [
