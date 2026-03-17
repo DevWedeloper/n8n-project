@@ -1,0 +1,469 @@
+{
+  "updatedAt": "2026-03-17T11:53:50.085Z",
+  "createdAt": "2026-03-17T11:13:28.066Z",
+  "id": "3ucJzoASNnlAR6T0",
+  "name": "Summarize Transcript",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Summarize Transcript",
+        "formDescription": "Summarizes the transcript for a specified ID.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "ID",
+              "placeholder": "Enter the Record ID.",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Submit"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "dbc235bd-b518-438f-8f92-217d582db583",
+      "name": "On form submission",
+      "webhookId": "b1b99359-c115-4e8b-8201-bf9f32c24d90"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appTKRYLG56dPQKmh",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblXGoCPHhwqXCRHL",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh/tblXGoCPHhwqXCRHL"
+        },
+        "filterByFormula": "=({ID} = \"{{ $json.ID }}\")",
+        "returnAll": false,
+        "options": {
+          "fields": [
+            "ID",
+            "Transcripts"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2f59440c-f0d6-454b-ba4a-0ebf04c8e2d3",
+      "name": "Search record with ID",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appTKRYLG56dPQKmh",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblm2wsLz3cLGufeI",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh/tblm2wsLz3cLGufeI"
+        },
+        "filterByFormula": "=({Videos} = \"{{ $json.ID }}\")",
+        "options": {
+          "fields": [
+            "Transcript Overlapped Chunk"
+          ]
+        },
+        "sort": {
+          "property": [
+            {
+              "field": "Chunk Order"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "cc27958a-73ae-4d0a-95b3-30e1e9b35549",
+      "name": "List all transcripts",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are summarizing a chunk of a longer transcript into a **structured, academic lecture-note style**.\n\nTranscript chunk:\n{{ $json.transcript }}\n\nInstructions:\n\n1. Use **numbered sections** with clear headings for main topics or themes in the chunk.  \n2. Use **bullet points** to present key ideas, examples, and important details.  \n3. Be **objective and descriptive**; do not interpret or speculate beyond what is in the transcript.  \n4. Include **relevant examples** when they clarify a point.  \n5. Keep the summary **clear, concise, and skimmable**, suitable for lecture notes or study guides.  \n6. Avoid repeating sentences verbatim from the transcript.  \n7. Focus **only on information present in this chunk**.\n\nOutput format should resemble structured lecture notes with headings and bullets."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "3f1d0624-5711-49a2-bc4b-b485ce12b3f2",
+      "name": "Summarize Chunk",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appTKRYLG56dPQKmh",
+          "mode": "list",
+          "cachedResultName": "Transcripts",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblXGoCPHhwqXCRHL",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://airtable.com/appTKRYLG56dPQKmh/tblXGoCPHhwqXCRHL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $json.content.parts[0].text }}",
+            "id": "={{ $node[\"Search record with ID\"].json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Creator",
+              "displayName": "Creator",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Video URL",
+              "displayName": "Video URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcripts",
+              "displayName": "Transcripts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcript Chunk Rollup (from Transcripts)",
+              "displayName": "Transcript Chunk Rollup (from Transcripts)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1824,
+        0
+      ],
+      "id": "d197bc51-c84f-49da-bdea-dc84233d4a6a",
+      "name": "Update Summary Column",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all incoming items\nconst allItems = $input.all();\n\n// Collect summaries into an array\nconst summaries = allItems.map(item => item.json.content.parts[0].text);\n\n// Return as a single item\nreturn [\n  {\n    json: {\n      summary: summaries\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "e9395303-d36e-46e7-a755-0950fc62d214",
+      "name": "Combine Summaries"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are given summaries of multiple chunks from the same transcript. Your goal is to produce a **single, cohesive, structured lecture-note style summary** of the entire transcript.\n\nChunk summaries:\n{{ JSON.stringify($json) }}\n\nInstructions:\n\n1. Organize the summary into **numbered sections with headings**, reflecting major themes or topics across the chunks.  \n2. Use **bullet points** for key ideas, examples, and supporting details.  \n3. Be **objective and descriptive**; avoid personal interpretation or speculative reasoning.  \n4. Include **relevant examples** when they clarify a point.  \n5. Maintain **clarity and skimmability**, suitable for lecture notes or study guides.  \n6. Combine overlapping or repeated ideas **without redundancy**.  \n7. Preserve important details and insights.  \n8. Do **not** mention chunks, their summaries, or the summarization process.\n\nOutput should read like a polished set of structured lecture notes."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        0
+      ],
+      "id": "531745b3-0c26-463f-ad62-6c59ca25c54d",
+      "name": "Summarize All Summaries",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst OVERLAP_PERCENT = 0.15;      // 15% of second chunk to remove\nconst CHUNKS_PER_COMBINE = 4;       // Number of chunks to combine per pair\nconst combinedChunks = [];\n\nfor (let i = 0; i < items.length; i += CHUNKS_PER_COMBINE) {\n    let combined = items[i].json['Transcript Overlapped Chunk'];\n\n    // Combine up to next CHUNKS_PER_COMBINE - 1 chunks\n    for (let j = 1; j < CHUNKS_PER_COMBINE && i + j < items.length; j++) {\n        const nextChunk = items[i + j].json['Transcript Overlapped Chunk'];\n        const sliceIndex = Math.floor(nextChunk.length * OVERLAP_PERCENT);\n        combined += nextChunk.slice(sliceIndex);\n    }\n\n    combinedChunks.push({ json: { transcript: combined } });\n}\n\nreturn combinedChunks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "82142d1f-6300-4c41-8865-e467a6f3787f",
+      "name": "Combine X Amount Of Transcript Chunks"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Search record with ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search record with ID": {
+      "main": [
+        [
+          {
+            "node": "List all transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List all transcripts": {
+      "main": [
+        [
+          {
+            "node": "Combine X Amount Of Transcript Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Chunk": {
+      "main": [
+        [
+          {
+            "node": "Combine Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Summaries": {
+      "main": [
+        [
+          {
+            "node": "Summarize All Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize All Summaries": {
+      "main": [
+        [
+          {
+            "node": "Update Summary Column",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine X Amount Of Transcript Chunks": {
+      "main": [
+        [
+          {
+            "node": "Summarize Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "249af633-c0f9-4c89-aaea-af3acefad7fd",
+  "activeVersionId": null,
+  "versionCounter": 111,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-03-17T11:13:28.072Z",
+      "createdAt": "2026-03-17T11:13:28.072Z",
+      "role": "workflow:owner",
+      "workflowId": "3ucJzoASNnlAR6T0",
+      "projectId": "i8s6WjRzOcbmDlU1",
+      "project": {
+        "updatedAt": "2026-03-13T09:19:18.890Z",
+        "createdAt": "2026-03-13T09:09:40.317Z",
+        "id": "i8s6WjRzOcbmDlU1",
+        "name": "Nathan devwedeloper@gmail.com <devwedeloper@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "60f6f711-6d6b-45fe-9fc1-b19cb62eef91"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
