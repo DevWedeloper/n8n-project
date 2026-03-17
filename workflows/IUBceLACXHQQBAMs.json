@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-17T07:58:09.130Z",
+  "updatedAt": "2026-03-17T11:54:08.149Z",
   "createdAt": "2026-03-14T14:20:24.775Z",
   "id": "IUBceLACXHQQBAMs",
   "name": "YouTube Transcript & Summary",
@@ -405,7 +405,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are summarizing a chunk of a longer transcript.\n\nTranscript chunk:\n{{ $json.transcript }}\n\nWrite a concise summary of the important information in this chunk.\n\nRules:\n\n* Capture the key ideas and important details\n* Do not repeat sentences from the transcript\n* Keep the summary clear and concise\n* Focus only on information present in this chunk\n"
+              "content": "=You are summarizing a chunk of a longer transcript into a **structured, academic lecture-note style**.\n\nTranscript chunk:\n{{ $json.transcript }}\n\nInstructions:\n\n1. Use **numbered sections** with clear headings for main topics or themes in the chunk.  \n2. Use **bullet points** to present key ideas, examples, and important details.  \n3. Be **objective and descriptive**; do not interpret or speculate beyond what is in the transcript.  \n4. Include **relevant examples** when they clarify a point.  \n5. Keep the summary **clear, concise, and skimmable**, suitable for lecture notes or study guides.  \n6. Avoid repeating sentences verbatim from the transcript.  \n7. Focus **only on information present in this chunk**.\n\nOutput format should resemble structured lecture notes with headings and bullets."
             }
           ]
         },
@@ -586,7 +586,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are given summaries of multiple chunks from the same transcript.\n\nChunk summaries:\n{{ JSON.stringify($json) }}\n\nWrite a single cohesive summary of the entire transcript.\n\nInstructions:\n\n* Combine overlapping or repeated ideas\n* Organize the information logically\n* Preserve important details and insights\n* Do not mention chunks or the summarization process\n* Produce a clear, well-structured final summary\n"
+              "content": "=You are given summaries of multiple chunks from the same transcript. Your goal is to produce a **single, cohesive, structured lecture-note style summary** of the entire transcript.\n\nChunk summaries:\n{{ JSON.stringify($json) }}\n\nInstructions:\n\n1. Organize the summary into **numbered sections with headings**, reflecting major themes or topics across the chunks.  \n2. Use **bullet points** for key ideas, examples, and supporting details.  \n3. Be **objective and descriptive**; avoid personal interpretation or speculative reasoning.  \n4. Include **relevant examples** when they clarify a point.  \n5. Maintain **clarity and skimmability**, suitable for lecture notes or study guides.  \n6. Combine overlapping or repeated ideas **without redundancy**.  \n7. Preserve important details and insights.  \n8. Do **not** mention chunks, their summaries, or the summarization process.\n\nOutput should read like a polished set of structured lecture notes."
             }
           ]
         },
@@ -846,9 +846,9 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "5c491bda-4e13-4b5f-9f7c-6b5c75c0fa5c",
+  "versionId": "e57e357e-9ad1-489e-8ef3-c1e5e59d0a9b",
   "activeVersionId": null,
-  "versionCounter": 548,
+  "versionCounter": 551,
   "triggerCount": 0,
   "tags": [],
   "shared": [
