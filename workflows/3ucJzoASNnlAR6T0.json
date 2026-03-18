@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-17T14:11:04.383Z",
+  "updatedAt": "2026-03-18T10:09:51.080Z",
   "createdAt": "2026-03-17T11:13:28.066Z",
   "id": "3ucJzoASNnlAR6T0",
   "name": "Summarize Transcript",
@@ -98,9 +98,9 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-2.5-flash",
+          "value": "models/gemini-2.5-pro",
           "mode": "list",
-          "cachedResultName": "models/gemini-2.5-flash"
+          "cachedResultName": "models/gemini-2.5-pro"
         },
         "messages": {
           "values": [
@@ -279,14 +279,13 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-2.5-flash",
-          "mode": "list",
-          "cachedResultName": "models/gemini-2.5-flash"
+          "value": "=models/gemini-2.5-pro",
+          "mode": "id"
         },
         "messages": {
           "values": [
             {
-              "content": "=You are given summaries of multiple chunks from the same transcript. Your goal is to produce a **single, clear, and concise style summary** of the entire transcript.\n\nChunk summaries: {{ JSON.stringify($json) }}\n\n## Instructions\n\n1. **Organize the summary into numbered sections with headings**, reflecting major themes or topics across the chunks. Prefer using clear Markdown headings for each section.  \n2. **Use bullet points** for key ideas, examples, and supporting details.  \n   - If a bullet point feels too heavy, **use sub-bullets** instead of turning it into a mini-paragraph. Prefer sub-bullets for clarity and skimmability.  \n   - Use **punchy, concise sentences** to keep points sharp and easy to scan.  \n3. Be **objective and descriptive**; avoid personal interpretation or speculative reasoning.  \n4. Include **relevant examples** when they clarify a point.  \n5. Maintain **clarity and skimmability** throughout.  \n6. Combine overlapping or repeated ideas **without redundancy**.  \n7. Preserve important details and insights.  \n8. Do **not** mention chunks, their summaries, or the summarization process.  \n9. Add a **key takeaways** section if necessary to reinforce understanding or highlight essential points.  "
+              "content": "=You are given summaries of multiple chunks from the same transcript. Your goal is to produce a **single, clear, and concise style summary** of the entire transcript.\n\nChunk summaries: {{ JSON.stringify($json) }}\n\n## Instructions\n\n1. **Organize the summary into numbered sections with headings**, reflecting major themes or topics across the chunks. Prefer using clear Markdown headings for each section.  \n2. **Use bullet points** for key ideas, examples, and supporting details.  \n   - If a bullet point feels too heavy, **use sub-bullets** instead of turning it into a mini-paragraph. Prefer sub-bullets for clarity and skimmability.  \n   - Use **punchy, concise sentences** to keep points sharp and easy to scan.  \n3. Be **objective and descriptive**; avoid personal interpretation or speculative reasoning.  \n4. Include **relevant examples** when they clarify a point.  \n5. Maintain **clarity and skimmability** throughout.  \n6. Combine overlapping or repeated ideas **without redundancy**.  \n7. Preserve important details and insights.  \n8. Do **not** mention chunks, their summaries, or the summarization process.  \n9. Add a **key takeaways** section if necessary to reinforce understanding or highlight essential points."
             }
           ]
         },
@@ -438,9 +437,9 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "7621eff0-d106-4533-98ae-57ba43866b94",
+  "versionId": "1a8a44d8-6f1b-4f05-b681-62e443adf408",
   "activeVersionId": null,
-  "versionCounter": 183,
+  "versionCounter": 199,
   "triggerCount": 0,
   "tags": [],
   "shared": [
