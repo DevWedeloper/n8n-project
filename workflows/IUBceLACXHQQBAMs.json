@@ -848,8 +848,8 @@
   "pinData": {},
   "versionId": "a927b705-3fad-447a-b8ce-26cf50e743e5",
   "activeVersionId": null,
-  "versionCounter": 555,
-  "triggerCount": 0,
+  "versionCounter": 558,
+  "triggerCount": 1,
   "tags": [],
   "shared": [
     {
@@ -871,7 +871,7 @@
     }
   ],
   "versionMetadata": {
-    "name": null,
-    "description": null
+    "name": "Version a927b705",
+    "description": ""
   }
 }
