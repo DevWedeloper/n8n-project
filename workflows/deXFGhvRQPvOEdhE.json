@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-17T15:41:23.748Z",
+  "updatedAt": "2026-03-23T18:49:05.975Z",
   "createdAt": "2026-03-17T14:11:59.624Z",
   "id": "deXFGhvRQPvOEdhE",
   "name": "Reddit Post to Obsidian Notes",
@@ -49,7 +49,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst frontMatter = `---\ntitle: \"${data.title}\"\nauthor: \"${data.author}\"\nsubreddit: \"${data.source}\"\ndate: \"${data.date}\"\nsource: \"${data.source}\ntags:\n  - source/reddit\n---\n`;\n\nconst markdownContent = frontMatter + data.content;\n\nreturn [\n  {\n    json: {\n      filename: `${data.title}.md`,\n      fileContent: markdownContent,\n    }\n  }\n];"
+        "jsCode": "const data = $input.first().json;\n\nconst frontMatter = `---\ntitle: \"${data.title}\"\nauthor: \"${data.author}\"\nsubreddit: \"${data.subreddit}\"\ndate: \"${data.date}\"\nsource: \"${data.source}\"\ntags:\n  - source/reddit\n---\n`;\n\nconst markdownContent = frontMatter + data.content;\n\nreturn [\n  {\n    json: {\n      filename: `${data.title}.md`,\n      fileContent: markdownContent,\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -179,10 +179,10 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "e04d377d-e069-4244-89ca-6794e66192f4",
+  "versionId": "8bd0bc2b-5514-4ee0-a03a-068379aabcab",
   "activeVersionId": null,
-  "versionCounter": 215,
-  "triggerCount": 0,
+  "versionCounter": 223,
+  "triggerCount": 1,
   "tags": [],
   "shared": [
     {
@@ -204,7 +204,7 @@
     }
   ],
   "versionMetadata": {
-    "name": null,
-    "description": null
+    "name": "Version 8bd0bc2b",
+    "description": ""
   }
 }
