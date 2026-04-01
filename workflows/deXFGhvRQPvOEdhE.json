@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-23T18:49:05.975Z",
+  "updatedAt": "2026-04-01T10:10:29.592Z",
   "createdAt": "2026-03-17T14:11:59.624Z",
   "id": "deXFGhvRQPvOEdhE",
   "name": "Reddit Post to Obsidian Notes",
@@ -15,6 +15,7 @@
           "values": [
             {
               "fieldLabel": "Reddit Post URL",
+              "fieldType": "textarea",
               "requiredField": true
             }
           ]
@@ -35,13 +36,13 @@
     },
     {
       "parameters": {
-        "url": "={{ $json[\"Reddit Post URL\"] }}.json",
+        "url": "={{ $json.url }}.json",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        224,
+        432,
         0
       ],
       "id": "d70fd43c-0556-461e-81cf-96a1c21aebec",
@@ -49,12 +50,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst frontMatter = `---\ntitle: \"${data.title}\"\nauthor: \"${data.author}\"\nsubreddit: \"${data.subreddit}\"\ndate: \"${data.date}\"\nsource: \"${data.source}\"\ntags:\n  - source/reddit\n---\n`;\n\nconst markdownContent = frontMatter + data.content;\n\nreturn [\n  {\n    json: {\n      filename: `${data.title}.md`,\n      fileContent: markdownContent,\n    }\n  }\n];"
+        "jsCode": "const results = [];\n\nfor (const inputItem of $input.all()) {\n  const data = inputItem.json;\n\n  const frontMatter = `---\ntitle: \"${data.title}\"\nauthor: \"${data.author}\"\nsubreddit: \"${data.subreddit}\"\ndate: \"${data.date}\"\nsource: \"${data.source}\"\ntags:\n  - source/reddit\n---\n`;\n\n  const markdownContent = frontMatter + data.content;\n\n  results.push({\n    json: {\n      filename: `${data.title}.md`,\n      fileContent: markdownContent,\n    }\n  });\n}\n\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
+        1088,
         0
       ],
       "id": "5ace417b-7d57-4e35-b644-afb034c11355",
@@ -72,7 +73,7 @@
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        896,
+        1312,
         0
       ],
       "id": "43a03376-ef6b-42f5-9b28-57fcf3b26d19",
@@ -87,7 +88,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        1120,
+        1536,
         0
       ],
       "id": "992035aa-2564-4603-bb58-a6c90f3b86fa",
@@ -95,16 +96,42 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\n\nconst rawTitle = item.data.children[0].data.title;\n\nconst cleanTitle = rawTitle\n  .replace(/:/g, ' -')\n  .replace(/\\*/g, '')\n  .replace(/\"/g, \"'\")\n  .replace(/\\//g, '')\n  .replace(/</g, '(')\n  .replace(/>/g, ')')\n  .replace(/[!?^]/g, '')\n  .replace(/#/g, '') // or 'No.' if you prefer\n  .replace(/\\[/g, '(')\n  .replace(/\\]/g, ')')\n  .replace(/\\|/g, '-')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst now = new Date();\n\n// Convert current time to GMT+8\nconst gmt8Time = new Date(now.getTime() + (8 - now.getTimezoneOffset() / 60) * 60 * 60 * 1000);\n\nconst formattedDate =\n  gmt8Time.getUTCFullYear() + '-' +\n  String(gmt8Time.getUTCMonth() + 1).padStart(2, '0') + '-' +\n  String(gmt8Time.getUTCDate()).padStart(2, '0') + ' ' +\n  String(gmt8Time.getUTCHours()).padStart(2, '0') + ':' +\n  String(gmt8Time.getUTCMinutes()).padStart(2, '0');\n\nreturn [{\n  title: cleanTitle,\n  author: item.data.children[0].data.author,\n  subreddit: item.data.children[0].data.subreddit,\n  date: formattedDate,\n  source: item.data.children[0].data.url,\n  content: item.data.children[0].data.selftext\n}];"
+        "jsCode": "const results = [];\n\n// Helper to decode HTML entities\nfunction decodeHtmlEntities(text = '') {\n  return text\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#39;/g, \"'\")\n    .replace(/&nbsp;/g, ' ')\n    .trim();\n}\n\n// Helper to clean title\nfunction cleanTitle(title = '') {\n  return title\n    .replace(/:/g, ' -')\n    .replace(/\\*/g, '')\n    .replace(/\"/g, \"'\")\n    .replace(/\\//g, '')\n    .replace(/</g, '(')\n    .replace(/>/g, ')')\n    .replace(/[!?^]/g, '')\n    .replace(/#/g, '')\n    .replace(/\\[/g, '(')\n    .replace(/\\]/g, ')')\n    .replace(/\\|/g, '-')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfor (const inputItem of $input.all()) {\n  const item = inputItem.json;\n  const post = item.data.children[0].data;\n\n  const now = new Date();\n\n  // Convert current time to GMT+8\n  const gmt8Time = new Date(\n    now.getTime() + (8 - now.getTimezoneOffset() / 60) * 60 * 60 * 1000\n  );\n\n  const formattedDate =\n    gmt8Time.getUTCFullYear() + '-' +\n    String(gmt8Time.getUTCMonth() + 1).padStart(2, '0') + '-' +\n    String(gmt8Time.getUTCDate()).padStart(2, '0') + ' ' +\n    String(gmt8Time.getUTCHours()).padStart(2, '0') + ':' +\n    String(gmt8Time.getUTCMinutes()).padStart(2, '0');\n\n  const cleanedTitle = cleanTitle(post.title);\n  const cleanContent = decodeHtmlEntities(post.selftext);\n\n  results.push({\n    json: {\n      title: cleanedTitle,\n      author: post.author,\n      subreddit: post.subreddit,\n      date: formattedDate,\n      source: post.url,\n      content: cleanContent\n    }\n  });\n}\n\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        448,
+        864,
         0
       ],
       "id": "fc456bd8-804b-4dd5-8186-a2edcb143811",
       "name": "Sanitize"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json[\"Reddit Post URL\"];\n\nconst urls = input\n  .split('\\n')\n  .map(u => u.trim())\n  .filter(u => u !== '');\n\nreturn urls.map(url => ({\n  json: { url }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1ec61da4-5d72-4088-b0ad-56a374522d30",
+      "name": "Split Out URLs"
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = [];\n\n$input.all().forEach((item, index) => {\n  if (index % 2 === 0) { // 0,2,4 = 1st, 3rd, 5th\n    item.json.myNewField = 1;\n    result.push(item);\n  }\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "69899e2e-481a-4994-be20-9d74daad0715",
+      "name": "Get First Part of URL JSON"
     }
   ],
   "connections": {
@@ -112,7 +139,7 @@
       "main": [
         [
           {
-            "node": "Get JSON of Page",
+            "node": "Split Out URLs",
             "type": "main",
             "index": 0
           }
@@ -123,7 +150,7 @@
       "main": [
         [
           {
-            "node": "Sanitize",
+            "node": "Get First Part of URL JSON",
             "type": "main",
             "index": 0
           }
@@ -167,6 +194,28 @@
           }
         ]
       ]
+    },
+    "Split Out URLs": {
+      "main": [
+        [
+          {
+            "node": "Get JSON of Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get First Part of URL JSON": {
+      "main": [
+        [
+          {
+            "node": "Sanitize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -179,9 +228,9 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "8bd0bc2b-5514-4ee0-a03a-068379aabcab",
+  "versionId": "cbc92397-8167-4bc8-abbc-ae1bbc2da0f6",
   "activeVersionId": null,
-  "versionCounter": 223,
+  "versionCounter": 271,
   "triggerCount": 1,
   "tags": [],
   "shared": [
@@ -204,7 +253,7 @@
     }
   ],
   "versionMetadata": {
-    "name": "Version 8bd0bc2b",
-    "description": ""
+    "name": null,
+    "description": null
   }
 }
