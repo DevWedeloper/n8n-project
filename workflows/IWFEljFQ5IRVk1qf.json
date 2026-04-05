@@ -1,0 +1,3364 @@
+{
+  "updatedAt": "2026-04-05T21:52:08.614Z",
+  "createdAt": "2026-03-28T15:33:12.229Z",
+  "id": "IWFEljFQ5IRVk1qf",
+  "name": "Agentic Gmail Executive Assistant",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        32
+      ],
+      "id": "7bc8e2d9-dae5-435d-a837-d5710b7af475",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "M41hdtJi7pSZjZc2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const { id, threadId, text, subject, from } = item.json;\n\n  return {\n    messageId: id,\n    threadId,\n    content: (text || '')\n      .replace(/\\s+/g, ' ')\n      .trim(),\n    sender: from?.value?.[0]?.address || '',\n    subject: subject || '',\n    timestamp: new Date().toISOString(),\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        32
+      ],
+      "id": "592f56e5-4a9d-4db7-99b3-3d2c33fefcbe",
+      "name": "Normalize Email"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyze this email and return a list of actions.\n\nPossible actions:\n- create_task\n- schedule_meeting\n- draft_reply\n- ignore\n\nReturn JSON:\n{\n  \"actions\": [\n    {\n      \"type\": \"create_task\",\n      \"payload\": {\n        \"title\": \"Review document\",\n        \"deadline\": null,\n        \"priority\": \"low|medium|high\"\n      }\n    },\n    {\n      \"type\": \"schedule_meeting\",\n      \"payload\": {\n        \"time_range\": \"next week\"\n      }\n    },\n    {\n      \"type\": \"draft_reply\",\n      \"payload\": {\n        \"message\": \"Here are some times next week...\"\n      }\n    }\n  ]\n}\n\nEmail:\n{{ $json.content }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        32
+      ],
+      "id": "94bd5b4a-19d0-445b-82e2-610eee4ce137",
+      "name": "Identify Intent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const raw = item.json.content.parts[0].text;\n\n  // Remove ```json and ```\n  const cleaned = raw.replace(/```json\\n?|\\n?```/g, \"\");\n\n  // Parse into JSON\n  const parsed = JSON.parse(cleaned);\n\n  return { json: parsed };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        32
+      ],
+      "id": "7b8bd5fe-a1af-4ada-8bc4-b010a1412c66",
+      "name": "Parse Intent JSON"
+    },
+    {
+      "parameters": {
+        "listId": "={{ $json.taskA.id }}",
+        "name": "={{ $('Split Out Actions').item.json.payload.title }}",
+        "description": "=deadline: {{ $('Split Out Actions').item.json.payload.deadline }}",
+        "additionalFields": {
+          "idLabels": "={{ $json.taskB.labelId }}"
+        }
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        -224
+      ],
+      "id": "6b6f1b11-830d-40a6-83fc-194c65a0a43e",
+      "name": "Create Tasks",
+      "credentials": {
+        "trelloApi": {
+          "id": "4F2RU3POKn1fhu4R",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "board",
+        "operation": "get",
+        "id": {
+          "__rl": true,
+          "value": "69c802097c337ad6e8e2ea80",
+          "mode": "list",
+          "cachedResultName": "n8n Tasks From Gmail",
+          "cachedResultUrl": "https://trello.com/b/c1K0nkYt/n8n-tasks-from-gmail"
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        -320
+      ],
+      "id": "ae7f3e4c-348d-4990-8f8e-e2f3da50d7e9",
+      "name": "Get a board",
+      "credentials": {
+        "trelloApi": {
+          "id": "4F2RU3POKn1fhu4R",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "getAll",
+        "id": "={{ $json.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        -320
+      ],
+      "id": "32b8ec0a-404e-4105-a80a-729384a3fe3f",
+      "name": "Get many lists",
+      "credentials": {
+        "trelloApi": {
+          "id": "4F2RU3POKn1fhu4R",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "boardId": {
+          "__rl": true,
+          "value": "69c802097c337ad6e8e2ea80",
+          "mode": "list",
+          "cachedResultName": "n8n Tasks From Gmail",
+          "cachedResultUrl": "https://trello.com/b/c1K0nkYt/n8n-tasks-from-gmail"
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        -128
+      ],
+      "id": "068d5b5d-9e97-4d19-a7e3-4ccaa57c8cd1",
+      "name": "Get many labels",
+      "credentials": {
+        "trelloApi": {
+          "id": "4F2RU3POKn1fhu4R",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all labels from the previous node\nconst allLabels = $input.all().map(i => i.json); // array of label objects\n\n// Get priority from Edit Fields1 node\nconst priority = $('Split Out Actions').first().json.payload.priority // low/medium/high\n\n// Find the label that matches this priority\nconst label = allLabels.find(l => l.name.toLowerCase() === priority);\n\nreturn [{\n  json: {\n    labelId: label ? label.id : null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        -128
+      ],
+      "id": "3fc804ac-c1ba-4528-8459-a71edb65f6de",
+      "name": "Get Label ID"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2112,
+        -224
+      ],
+      "id": "77938a46-a2aa-4cd1-a686-e2135131f3f7",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ \n  json: { \n    taskA: $input.all()[0]?.json, \n    taskB: $input.all()[1]?.json \n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        -224
+      ],
+      "id": "b4cc7d5f-e7e0-4fe3-8c3e-0a44ad0f129b",
+      "name": "Combine Merge"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Write a single, professional, and concise reply to the message below. Respond appropriately to the content. Do not provide multiple options, just one final reply.\n\nContent:\n{{ $('Normalize Email').item.json.content }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        464
+      ],
+      "id": "e6a30a0b-6323-4677-82f9-55ea6d9decf4",
+      "name": "Draft reply",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: JSON.parse($input.first().json.body.payload)\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1456
+      ],
+      "id": "2320f04e-8b6b-4076-a7cd-d725932b5cbc",
+      "name": "Parse Slack Block Response"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e3ac4e36-74cf-43a0-a268-8bd4854d15e4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1456
+      ],
+      "id": "d3fc867b-e0f9-4717-b8aa-3e16ae22a3ce",
+      "name": "Get response from Slack Blocks Actions",
+      "webhookId": "e3ac4e36-74cf-43a0-a268-8bd4854d15e4"
+    },
+    {
+      "parameters": {
+        "operation": "deleteRecord",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $('Extract Value and Record ID For Draft').item.json.recordId }}"
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2144,
+        784
+      ],
+      "id": "44d856fa-231e-4923-9363-a3b195e711de",
+      "name": "Delete Record After Approve",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n    \"metadata\": {\n      \"event_type\": \"draft\",\n      \"event_payload\": {}\n    },\n\t\"blocks\": [\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \"*Original message:*\\n{{ $json.originalMessage }}\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"input\",\n\t\t\t\"block_id\": \"edit_block\",\n\t\t\t\"element\": {\n\t\t\t\t\"type\": \"plain_text_input\",\n\t\t\t\t\"action_id\": \"edited_text\",\n\t\t\t\t\"initial_value\": \"{{ $json.draft }}\"\n\t\t\t},\n\t\t\t\"label\": {\n\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\"text\": \"Edit your reply\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"actions\",\n\t\t\t\"block_id\": \"quick_buttons\",\n\t\t\t\"elements\": [\n\t\t\t\t{\n\t\t\t\t\t\"type\": \"button\",\n\t\t\t\t\t\"text\": {\n\t\t\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\t\t\"text\": \"Submit\"\n\t\t\t\t\t},\n                    \"action_id\": \"edit_submit\",\n\t\t\t\t\t\"value\": \"edit.submit|{{ $('Extract Value and Record ID For Draft').item.json.recordId }}\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1696,
+        880
+      ],
+      "id": "cc81bfd0-60ef-45e7-b400-8308c5b30547",
+      "name": "Send Edit Block",
+      "webhookId": "2fed9102-0707-4559-9621-c3ca81707a45",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $json.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1408,
+        688
+      ],
+      "id": "decab3e5-086d-40ab-bde6-72c43e2784cb",
+      "name": "Get Draft Record For Approve",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $json.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        880
+      ],
+      "id": "b028c45f-d38d-49ec-ad72-69d57a97e276",
+      "name": "Get Draft Record For Edit Start",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "reply",
+        "threadId": "={{ $json.threadId }}",
+        "messageId": "={{ $json.messageId }}",
+        "emailType": "html",
+        "message": "={{ $json.draftReply }}\n\n{{ $json.htmlBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        784
+      ],
+      "id": "69a5a50d-5da4-464f-ab45-ca03a8bb95a0",
+      "name": "Reply to Thread on Approve",
+      "webhookId": "4c4cbdd3-ba4f-493a-87a2-526a045a5f0a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "M41hdtJi7pSZjZc2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const actions = item.json.actions || [];\n  \n  for (const action of actions) {\n    output.push({\n      json: action\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        32
+      ],
+      "id": "9ff10c9b-69b5-4532-91ba-5e73b185712c",
+      "name": "Split Out Actions"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "create_task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7280711b-9d56-48e5-95b7-31c06faed32c"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Task Creation"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1ef8f367-7802-421b-95d4-5185e1c4b431",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "schedule_meeting",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Scheduling"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8317038f-aa4a-4ccb-aed6-f1cfd158d1df",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "draft_reply",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Draft Reply"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        16
+      ],
+      "id": "99d6212c-9350-4601-9572-c5d05f3a0fec",
+      "name": "Switch Intent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Normalize Email').item.json.content }}",
+        "options": {
+          "systemMessage": "You are a scheduling assistant with access to the \"Get Availability\" tool.\n\nYou are **not engaging in a conversation**. You are assessing an incoming email requesting a meeting and generating suitable time slot suggestions.\n\n1. Call the \"Get Availability\" tool to check calendar availability for the requested date/time range.\n2. Identify free time slots that match the requested duration.\n3. Propose 3–5 candidate time slots in the recipient's timezone.\n4. Format your response exactly as JSON like this:\n\n{\n  \"suggestions\": [\n    \"April 6, 2026 (Monday) 3 PM - 4 PM\",\n    \"April 7, 2026 (Tuesday) 10 AM - 11 AM\",\n    \"April 8, 2026 (Wednesday) 2 PM - 3 PM\"\n  ]\n}\n\n5. Only return this JSON. Do NOT include any extra text, explanations, or greetings.\n\nRules:\n- Always use the \"Get Availability\" tool before suggesting times.\n- Avoid suggesting times that are already busy.\n- Space out suggestions when possible.\n- Use a friendly and professional tone."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1472,
+        64
+      ],
+      "id": "7e13b439-548f-4406-9ed5-abb7f3ef3dca",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        288
+      ],
+      "id": "35d50fa3-61d4-454f-b070-f52b3edeb878",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((data) => {\n  let draft = data.json[\"Draft Reply\"] || \"\";\n  let originalMessage = data.json[\"Original Message\"] || \"\";\n\n  // Escape function (reuse for both)\n  const escapeText = (text) => {\n    return text\n      .replace(/\\\\/g, \"\\\\\\\\\")   // escape backslashes\n      .replace(/\\n/g, \"\\\\n\")    // escape newlines\n      .replace(/\"/g, '\\\\\"');    // escape double quotes\n  };\n\n  draft = escapeText(draft);\n  originalMessage = escapeText(originalMessage);\n\n  return {\n    originalMessage,\n    draft\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        880
+      ],
+      "id": "637be083-d5d2-475f-af15-5d87a5eeea71",
+      "name": "Escape Characters in Edit Start"
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "devwedeloper@gmail.com",
+          "mode": "list",
+          "cachedResultName": "devwedeloper@gmail.com"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Time', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Time', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        1616,
+        288
+      ],
+      "id": "906d0375-d155-43a2-b2fc-6f7024602a91",
+      "name": "Get Availability",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ZNH8IBuQ0mtOs5Xb",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const raw = item.json.output;\n\n  // Remove ```json and ```\n  const cleaned = raw.replace(/```json\\n?|\\n?```/g, \"\");\n\n  // Parse into JSON\n  const parsed = JSON.parse(cleaned);\n\n  return { json: parsed };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        176
+      ],
+      "id": "511b474d-ae80-4ecc-a263-e09c4826d094",
+      "name": "Parse Schedule Suggestions"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n    \"metadata\": {\n      \"event_type\": \"draft\",\n      \"event_payload\": {}\n    },\n\t\"blocks\": [\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \"*Original message:*\\n{{ $json.originalMessage }}\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \"*Draft reply:*\\n{{ $json.draft }}\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"block_id\": \"approve_block\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\"text\": \"Approve this reply\",\n\t\t\t\t\"emoji\": true\n\t\t\t},\n\t\t\t\"accessory\": {\n\t\t\t\t\"type\": \"button\",\n\t\t\t\t\"text\": {\n\t\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\t\"text\": \"Approve\",\n\t\t\t\t\t\"emoji\": true\n\t\t\t\t},\n\t\t\t\t\"style\": \"primary\",\n\t\t\t\t\"action_id\": \"approve_action\",\n\t\t\t\t\"value\": \"approve|{{ $('Create Draft Record For Draft').item.json.id }}\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"block_id\": \"edit_block\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\"text\": \"Edit this reply\",\n\t\t\t\t\"emoji\": true\n\t\t\t},\n\t\t\t\"accessory\": {\n\t\t\t\t\"type\": \"button\",\n\t\t\t\t\"text\": {\n\t\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\t\"text\": \"Edit\",\n\t\t\t\t\t\"emoji\": true\n\t\t\t\t},\n\t\t\t\t\"action_id\": \"edit_action\",\n\t\t\t\t\"value\": \"edit.start|{{ $('Create Draft Record For Draft').item.json.id }}\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"block_id\": \"reject_block\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\"text\": \"Reject this reply\",\n\t\t\t\t\"emoji\": true\n\t\t\t},\n\t\t\t\"accessory\": {\n\t\t\t\t\"type\": \"button\",\n\t\t\t\t\"text\": {\n\t\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\t\"text\": \"Reject\",\n\t\t\t\t\t\"emoji\": true\n\t\t\t\t},\n\t\t\t\t\"style\": \"danger\",\n\t\t\t\t\"action_id\": \"reject_action\",\n\t\t\t\t\"value\": \"reject|{{ $('Create Draft Record For Draft').item.json.id }}\"\n\t\t\t}\n\t\t}\n\t]\n}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2400,
+        464
+      ],
+      "id": "44a37edf-6bb7-424c-8e6d-b2df4a099923",
+      "name": "Send Approve/Edit/Reject Block For Draft",
+      "webhookId": "c1456b9e-e032-4d82-aab1-8d05af36a53d",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n  \"metadata\": {\n    \"event_type\": \"schedule\",\n    \"event_payload\": {}\n  },\n  \"blocks\": [\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \"*Original message:*\\n{{ $json.originalMessage }}\"\n\t\t\t}\n\t\t},\n    {\n      \"type\": \"section\",\n      \"block_id\": \"suggestions_block\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Proposed schedule:*\\n{{ $('Parse Schedule Suggestions').item.json.suggestions.map(s => `• ${s}`).join('\\\\n') }}\"\n      }\n    },\n    {\n      \"type\": \"context\",\n      \"elements\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"✏️ *Edit format:* e.g. `April 6, 2026 (Monday) 3 PM - 4 PM` (weekday optional, timezone: Asia/Manila)\"\n        }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"block_id\": \"approve_block\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"Approve this reply and schedule\",\n        \"emoji\": true\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Approve\",\n          \"emoji\": true\n        },\n        \"style\": \"primary\",\n        \"action_id\": \"approve_action\",\n        \"value\": \"approve|{{ $('Create Draft Record For Schedule').item.json.id }}\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"block_id\": \"edit_block\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"Edit the schedule (you can modify times or add/remove slots)\",\n        \"emoji\": true\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Edit\",\n          \"emoji\": true\n        },\n        \"action_id\": \"edit_action\",\n        \"value\": \"edit.start|{{ $('Create Draft Record For Schedule').item.json.id }}\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"block_id\": \"reject_block\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"Reject this draft\",\n        \"emoji\": true\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Reject\",\n          \"emoji\": true\n        },\n        \"style\": \"danger\",\n        \"action_id\": \"reject_action\",\n        \"value\": \"reject|{{ $('Create Draft Record For Schedule').item.json.id }}\"\n      }\n    }\n  ]\n}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2848,
+        176
+      ],
+      "id": "cdc7fe92-9eee-4bd6-8c0c-ee392ab12d7b",
+      "name": "Send Approve/Edit/Reject Block For Scheduling",
+      "webhookId": "c1456b9e-e032-4d82-aab1-8d05af36a53d",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.metadata.event_type }}",
+                    "rightValue": "draft",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e11e4db9-f887-4e89-9185-dc6ede9664a4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Draft"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ba56be08-4ffc-471c-a573-a469010cd4fa",
+                    "leftValue": "={{ $json.message.metadata.event_type }}",
+                    "rightValue": "schedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Schedule"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        1360
+      ],
+      "id": "a67953b9-e8f9-4479-8615-2d8e39012ceb",
+      "name": "Interaction"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((data) => {\n  const rawValue = data.json.actions[0].value\n  const [value, recordId] = rawValue.split('|');\n  \n  return {\n    value,\n    recordId\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        976
+      ],
+      "id": "0d584387-c7b4-4223-8993-8bae7bc0cec6",
+      "name": "Extract Value and Record ID For Draft"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Receiver Email": "={{ $('Normalize Email').item.json.sender }}",
+            "Draft Reply": "={{ $json.content.parts[0].text }}",
+            "Thread ID": "={{ $('Normalize Email').item.json.threadId }}",
+            "Message ID": "={{ $('Normalize Email').item.json.messageId }}",
+            "Original Message": "={{ $('Normalize Email').item.json.content }}",
+            "Subject": "={{ $('Normalize Email').item.json.subject }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Message ID",
+              "displayName": "Message ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Thread ID",
+              "displayName": "Thread ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Receiver Email",
+              "displayName": "Receiver Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Reply",
+              "displayName": "Draft Reply",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "HTML Body",
+              "displayName": "HTML Body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Schedule",
+              "displayName": "Schedule",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1824,
+        464
+      ],
+      "id": "7325f57e-206c-48a7-b1b7-31f24809078c",
+      "name": "Create Draft Record For Draft",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Receiver Email": "={{ $node[\"Normalize Email\"].json.sender }}",
+            "Draft Reply": "={{ $json.content.parts[0].text }}",
+            "Thread ID": "={{ $node[\"Normalize Email\"].json.threadId }}",
+            "Message ID": "={{ $node[\"Normalize Email\"].json.messageId }}",
+            "Original Message": "={{ $node[\"Normalize Email\"].json.content }}",
+            "Subject": "={{ $node[\"Normalize Email\"].json.subject }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Message ID",
+              "displayName": "Message ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Thread ID",
+              "displayName": "Thread ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Receiver Email",
+              "displayName": "Receiver Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Reply",
+              "displayName": "Draft Reply",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "HTML Body",
+              "displayName": "HTML Body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Schedule",
+              "displayName": "Schedule",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        176
+      ],
+      "id": "18c3c59f-7340-40f9-aa11-95119930433e",
+      "name": "Create Draft Record For Schedule",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((data) => {\n  let draft = data.json.fields[\"Draft Reply\"] || \"\";\n  let originalMessage = $('Normalize Email').first().json.content || \"\";\n\n  // Escape function (reuse for both)\n  const escapeText = (text) => {\n    return text\n      .replace(/\\\\/g, \"\\\\\\\\\")   // escape backslashes\n      .replace(/\\n/g, \"\\\\n\")    // escape newlines\n      .replace(/\"/g, '\\\\\"');    // escape double quotes\n  };\n\n  draft = escapeText(draft);\n  originalMessage = escapeText(originalMessage);\n\n  return {\n    originalMessage,\n    draft\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        464
+      ],
+      "id": "d6ac5810-62a8-427f-860b-0d064c71c4a1",
+      "name": "Escape Characters in Draft Actions"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((data) => {\n  let draft = data.json.fields[\"Draft Reply\"] || \"\";\n  let originalMessage = $('Normalize Email').first().json.content || \"\";\n\n  // Escape function (reuse for both)\n  const escapeText = (text) => {\n    return text\n      .replace(/\\\\/g, \"\\\\\\\\\")   // escape backslashes\n      .replace(/\\n/g, \"\\\\n\")    // escape newlines\n      .replace(/\"/g, '\\\\\"');    // escape double quotes\n  };\n\n  draft = escapeText(draft);\n  originalMessage = escapeText(originalMessage);\n\n  return {\n    originalMessage,\n    draft\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2624,
+        176
+      ],
+      "id": "3efe8d05-39a4-497e-b7f3-6d688408bb63",
+      "name": "Escape Characters in Schedule Actions"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((data) => {\n  const rawValue = data.json.actions[0].value\n  const [value, recordId] = rawValue.split('|');\n  \n  return {\n    value,\n    recordId\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        1744
+      ],
+      "id": "f21dadca-b507-423d-aefc-27e36d047e9a",
+      "name": "Extract Value and Record ID For Schedule"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1219f120-073c-4064-8e1f-a8ac5d0e627b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Approve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0099c890-68cc-4bb5-85c1-85c7a18da7f3",
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "edit.start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Edit Start"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "20e2ffdc-9f42-4868-b1e0-11d1aaa0e5fd",
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "edit.submit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Edit Submit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a0486cb2-afa9-43fb-989c-2465bc1233a1",
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "reject",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reject"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        944
+      ],
+      "id": "173fa75a-6a81-4c74-8fc6-4335be5c7e56",
+      "name": "Switch Draft Action"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1219f120-073c-4064-8e1f-a8ac5d0e627b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Approve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0099c890-68cc-4bb5-85c1-85c7a18da7f3",
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "edit.start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Edit Start"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "20e2ffdc-9f42-4868-b1e0-11d1aaa0e5fd",
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "edit.submit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Edit Submit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a0486cb2-afa9-43fb-989c-2465bc1233a1",
+                    "leftValue": "={{ $json.value }}",
+                    "rightValue": "reject",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reject"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        1712
+      ],
+      "id": "0c765051-9b05-455c-b421-be0e1caab6a6",
+      "name": "Switch Schedule Action"
+    },
+    {
+      "parameters": {
+        "operation": "deleteRecord",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $('Extract Value and Record ID For Draft').item.json.recordId }}"
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        1264
+      ],
+      "id": "ecd67345-efe0-47c4-aa4b-01beb4c1cca8",
+      "name": "Delete Record After Draft Reject",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteRecord",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $('Extract Value and Record ID For Schedule').item.json.recordId }}"
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        2032
+      ],
+      "id": "74b797d1-cbd2-4875-82f5-b3bf549c5fa4",
+      "name": "Delete Record After Schedule Reject",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a schedule parser.\n\nConvert a human-written schedule into strict JSON only. Do not provide code, explanations, or text.\n\nINPUT:\n- SCHEDULES: {{ $json.schedules }}\n- TODAY: {{ $now }}\n\nOUTPUT REQUIREMENTS:\n- Return ONLY valid JSON.\n- Always follow this exact schema:\n\n{\n  \"success\": true,\n  \"data\": [\n    {\n      \"name\": \"string\",\n      \"date\": \"YYYY-MM-DD\",\n      \"start\": \"HH:mm\",\n      \"end\": \"HH:mm\"\n    }\n  ]\n}\n\n- If parsing is impossible, return:\n\n{\n  \"success\": false,\n  \"data\": []\n}\n\nRULES:\n1. Convert the date to YYYY-MM-DD.\n2. Convert the time to 24-hour HH:mm format.\n3. If the end time is earlier than or equal to the start time, assume the event ends the next day.\n4. Ignore weekdays unless needed to validate the date.\n5. Return \"success\": true only if all schedules were parsed correctly.\n\nEXAMPLES:\n\nInput: April 6, 2026 (Monday) 3 PM - 4 PM\nOutput:\n{\n  \"success\": true,\n  \"data\": [\n    {\n      \"name\": \"April 6, 2026 (Monday) 3 PM - 4 PM\",\n      \"date\": \"2026-04-06\",\n      \"start\": \"15:00\",\n      \"end\": \"16:00\"\n    }\n  ]\n}\n\nInput: April 6, 2026 11 PM - 1 AM\nOutput:\n{\n  \"success\": true,\n  \"data\": [\n    {\n      \"name\": \"April 6, 2026 11 PM - 1 AM\",\n      \"date\": \"2026-04-06\",\n      \"start\": \"23:00\",\n      \"end\": \"01:00\"\n    }\n  ]\n}\n\nInput: nonsense input\nOutput:\n{\n  \"success\": false,\n  \"data\": []\n}\n\nImportant: Only produce JSON, nothing else."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        1456
+      ],
+      "id": "c8e32293-8e5a-43e7-b7e2-b54dda6871b4",
+      "name": "Normalize Schedule Input",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const raw = item.json.content.parts[0].text;\n\n  // Remove ```json and ```\n  const cleaned = raw.replace(/```json\\n?|\\n?```/g, \"\");\n\n  // Parse into JSON\n  const parsed = JSON.parse(cleaned);\n\n  return { json: parsed };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        1456
+      ],
+      "id": "1bca867f-cdc7-4daa-ac53-36f05a432590",
+      "name": "Parse Normalized Schedule JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "// timezone offset in hours (Asia/Manila is UTC+8)\nconst timeZoneOffset = 8; \n\n// flatten all schedules from all input items\nlet output = [];\n\nconst data = $('Parse Normalized Schedule JSON').first().json.data;\n\ndata.forEach(schedule => {\n    const { name, date, start, end } = schedule;\n\n    // create Date objects\n    let startDate = new Date(`${date}T${start}:00`);\n    let endDate = new Date(`${date}T${end}:00`);\n\n    // handle overnight events\n    if (endDate <= startDate) {\n        endDate.setDate(endDate.getDate() + 1);\n    }\n\n    // apply timezone offset (in hours)\n    startDate.setHours(startDate.getHours() + timeZoneOffset);\n    endDate.setHours(endDate.getHours() + timeZoneOffset);\n\n    // push ISO-ready schedule\n    output.push({\n        json: {\n            name,\n            start: startDate.toISOString(),\n            end: endDate.toISOString()\n        }\n    });\n});\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        1360
+      ],
+      "id": "f51b3130-d404-45a3-830e-e85971df4daa",
+      "name": "Convert to ISO"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4a163a16-651d-4f03-bc4f-fb429d3555dc",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1920,
+        1456
+      ],
+      "id": "aa06eaad-4a23-4516-9038-4d880bd2c794",
+      "name": "If Normalizing Schedule"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "text": "=Attempt to normalize schedule via LLM failed. \n\nSchedules:\n{{ $('Extract Schedules Approve').item.json.schedules.map(s => `• ${s}`).join('\\n') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2144,
+        1648
+      ],
+      "id": "5ebd1829-d04d-4263-b04b-9856fe8afcc7",
+      "name": "Send Error Message on Failed Schedule Normalization",
+      "webhookId": "f27468d7-0711-44d2-b26e-79f7bba5034e",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\n// Helper function: generate cryptographically secure token\nfunction generateToken(length = 16) {\n    const array = new Uint8Array(length);\n    crypto.getRandomValues(array);\n    return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');\n}\n\n// Generate one groupToken for this batch\nconst groupToken = generateToken(8);\n\nreturn $input.all().map(({ json: { name, start, end } }) => ({\n    json: {\n        name,\n        start,\n        end,\n        token: generateToken(8),   // unique per item\n        groupToken                 // same for all items in this run\n    }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        1360
+      ],
+      "id": "408c153c-ebbe-4823-bc0a-27dccdf7ae69",
+      "name": "Generate Schedule Tokens"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEIiJNZHOTscKAq",
+          "mode": "list",
+          "cachedResultName": "Schedule",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tblEIiJNZHOTscKAq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Token": "={{ $json.token }}",
+            "Start": "={{ $json.start }}",
+            "End": "={{ $json.end }}",
+            "Group Token": "={{ $json.groupToken }}",
+            "Name": "={{ $json.name }}",
+            "Receiver": "={{ $('Get Draft Record For Schedule Approve').item.json['Receiver Email'] }}",
+            "Summary": "={{ $('Get Draft Record For Schedule Approve').item.json.Subject }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Token",
+              "displayName": "Token",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Start",
+              "displayName": "Start",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "End",
+              "displayName": "End",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Receiver",
+              "displayName": "Receiver",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Group Token",
+              "displayName": "Group Token",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2816,
+        1360
+      ],
+      "id": "6da3280a-5d4c-4219-adfd-6c3f07c8d473",
+      "name": "Create Schedule Record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "0ed538fe-850d-430f-8d49-8b97aacfd146",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        2352
+      ],
+      "id": "9d54e97c-f957-484d-8f5b-5b24aab63dd4",
+      "name": "Receiver Clicks Schedule Link",
+      "webhookId": "0ed538fe-850d-430f-8d49-8b97aacfd146"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get items from Node 1\nconst scheduleTokens = $('Generate Schedule Tokens').all();\n\n// Map each slot to an HTML <li> link\nconst htmlList = scheduleTokens\n  .map(item => {\n    const s = item.json;\n    return `<li><a href=\"https://unkinged-appreciatingly-lavera.ngrok-free.dev/webhook-test/0ed538fe-850d-430f-8d49-8b97aacfd146?slot=${s.token}\">${s.name}</a></li>`;\n  })\n  .join('');\n\n// Return the HTML body\nreturn {\n  json: {\n    htmlBody: `<p>Please choose a slot:</p><ul>${htmlList}</ul>`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        1360
+      ],
+      "id": "e725ab99-f63e-4921-a51e-550ff80cc1dd",
+      "name": "Generate Schedule Links"
+    },
+    {
+      "parameters": {
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Draft",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $('Extract Value and Record ID For Schedule').item.json.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2144,
+        1360
+      ],
+      "id": "4f85b4b6-af90-49c9-8646-59f59cff7586",
+      "name": "Get Draft Record For Schedule Approve",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Write a single, professional, and concise reply to the message below. Respond appropriately to the content. Do not provide multiple options, just one final reply.\n\nContent:\n{{ $('Normalize Email').item.json.content }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2048,
+        176
+      ],
+      "id": "28a16b98-8830-42f1-9420-663ff8b098d3",
+      "name": "Draft (Schedule) Reply",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "maHpgNn66aiSPCla",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n  \"metadata\": {\n    \"event_type\": \"draft\",\n    \"event_payload\": {}\n  },\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Original message:*\\n{{ $json.originalMessage }}\"\n      }\n    },\n    {\n      \"type\": \"context\",\n      \"elements\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"✏️ *Edit format:* e.g. `April 6, 2026 (Monday) 3 PM - 4 PM` (weekday optional, timezone: Asia/Manila)\"\n        }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"block_id\": \"approve_block\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"Approve this reply and schedule\",\n        \"emoji\": true\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Approve\",\n          \"emoji\": true\n        },\n        \"style\": \"primary\",\n        \"action_id\": \"approve_action\",\n        \"value\": \"approve|{{ $('Get Draft Record For Schedule Approve').item.json.id }}\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"block_id\": \"edit_block\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"Edit the schedule (you can modify times or add/remove slots)\",\n        \"emoji\": true\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Edit\",\n          \"emoji\": true\n        },\n        \"action_id\": \"edit_action\",\n        \"value\": \"edit.start|{{ $('Get Draft Record For Schedule Approve').item.json.id }}\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"block_id\": \"reject_block\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"Reject this draft\",\n        \"emoji\": true\n      },\n      \"accessory\": {\n        \"type\": \"button\",\n        \"text\": {\n          \"type\": \"plain_text\",\n          \"text\": \"Reject\",\n          \"emoji\": true\n        },\n        \"style\": \"danger\",\n        \"action_id\": \"reject_action\",\n        \"value\": \"reject|{{ $('Get Draft Record For Schedule Approve').item.json.id }}\"\n      }\n    }\n  ]\n}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        3712,
+        1360
+      ],
+      "id": "a699b3a9-40d7-4788-933a-b80cf51028a5",
+      "name": "Send Approve/Edit/Reject Block For Schedule Draft Approve",
+      "webhookId": "c1456b9e-e032-4d82-aab1-8d05af36a53d",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(() => {\n  let originalMessage = $('Draft (Schedule) Reply').first().json.content.parts[0].text || \"\";\n  \n  // Escape function (reuse for both)\n  const escapeText = (text) => {\n    return text\n      .replace(/\\\\/g, \"\\\\\\\\\")   // escape backslashes\n      .replace(/\\n/g, \"\\\\n\")    // escape newlines\n      .replace(/\"/g, '\\\\\"');    // escape double quotes\n  };\n\n  originalMessage = escapeText(originalMessage);\n\n  return {\n    originalMessage,\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        1360
+      ],
+      "id": "8da6a24e-6b44-4825-b3e5-ddc8eb1e7186",
+      "name": "Escape Characters in Schedule Approve"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEIiJNZHOTscKAq",
+          "mode": "list",
+          "cachedResultName": "Schedule",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tblEIiJNZHOTscKAq"
+        },
+        "filterByFormula": "=({Token} = \"{{ $json.query.slot }}\")",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        2352
+      ],
+      "id": "281f7544-c460-49e3-8ec1-c4467587ab83",
+      "name": "Get Schedule Token",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "devwedeloper@gmail.com",
+          "mode": "list",
+          "cachedResultName": "devwedeloper@gmail.com"
+        },
+        "timeMin": "={{ $json.Start }}",
+        "timeMax": "={{ $json.End }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        2352
+      ],
+      "id": "6cdbd93c-174c-48b4-a87c-1a739ecb83ef",
+      "name": "Check Schedule Availability",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ZNH8IBuQ0mtOs5Xb",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "63f1d0fe-b658-4fdb-a00e-a3eb99af6ac7",
+              "leftValue": "={{ $json.available }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        2352
+      ],
+      "id": "16f0ac41-7342-4fe8-9f39-117c07473262",
+      "name": "If Schedule Available"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "devwedeloper@gmail.com",
+          "mode": "list",
+          "cachedResultName": "devwedeloper@gmail.com"
+        },
+        "start": "={{ $('Get Schedule Token').item.json.Start }}",
+        "end": "={{ $('Get Schedule Token').item.json.End }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $('Get Schedule Token').item.json.Receiver }}"
+          ],
+          "summary": "={{ $('Get Schedule Token').item.json.Summary }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        2256
+      ],
+      "id": "86fb5f33-06e3-4749-a106-2daf226ae498",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "ZNH8IBuQ0mtOs5Xb",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEIiJNZHOTscKAq",
+          "mode": "list",
+          "cachedResultName": "Schedule",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tblEIiJNZHOTscKAq"
+        },
+        "filterByFormula": "=({Group Token} = \"{{ $('Get Schedule Token').item.json['Group Token'] }}\")",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        2256
+      ],
+      "id": "88de96f5-2ea0-403a-98a9-74af8a93fe96",
+      "name": "Get All by Group Token",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteRecord",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblEIiJNZHOTscKAq",
+          "mode": "list",
+          "cachedResultName": "Schedule",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tblEIiJNZHOTscKAq"
+        },
+        "id": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1568,
+        2256
+      ],
+      "id": "1fde2f2a-9519-4875-adbe-251ec58b87c7",
+      "name": "Delete Schedule Tokens",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "text": "=Schedule no longer available.\n\nToken: {{ $('Get Schedule Token').item.json.Token }}\nName: {{ $('Get Schedule Token').item.json.Name }}\nStart: {{ $('Get Schedule Token').item.json.Start }}\nEnd: {{ $('Get Schedule Token').item.json.End }}\nGroup Token: {{ $('Get Schedule Token').item.json['Group Token'] }}\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1120,
+        2448
+      ],
+      "id": "3c5ff227-d2d8-4fca-9fb8-9bedde2428f8",
+      "name": "Send Schedule Not Available Message",
+      "webhookId": "5bdeed1d-a2f6-4541-8e8a-fc9418f80138",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AP3LAUE4F",
+          "mode": "list",
+          "cachedResultName": "all-n8n-hitl"
+        },
+        "messageType": "block",
+        "blocksUi": "={\n    \"metadata\": {\n      \"event_type\": \"schedule\",\n      \"event_payload\": {}\n    },\n\t\"blocks\": [\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \"*Original message:*\\n{{ $('Get Draft Record For Schedule Edit Start').item.json['Original Message'] }}\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"input\",\n\t\t\t\"block_id\": \"edit_block\",\n\t\t\t\"element\": {\n\t\t\t\t\"type\": \"plain_text_input\",\n\t\t\t\t\"action_id\": \"edited_text\",\n\t\t\t\t\"initial_value\": \"{{ $json.schedules.map(s => `• ${s}`).join('\\\\n') }}\",\n                \"multiline\": true\n\t\t\t},\n\t\t\t\"label\": {\n\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\"text\": \"Edit your reply\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"actions\",\n\t\t\t\"block_id\": \"quick_buttons\",\n\t\t\t\"elements\": [\n\t\t\t\t{\n\t\t\t\t\t\"type\": \"button\",\n\t\t\t\t\t\"text\": {\n\t\t\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\t\t\"text\": \"Submit\"\n\t\t\t\t\t},\n                    \"action_id\": \"edit_submit\",\n\t\t\t\t\t\"value\": \"edit.submit|{{ $('Extract Value and Record ID For Schedule').item.json.recordId }}\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1696,
+        1648
+      ],
+      "id": "a65bcb24-6cce-4971-8fc2-7d63fe566271",
+      "name": "Send Schedule Edit Block",
+      "webhookId": "2fed9102-0707-4559-9621-c3ca81707a45",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Draft",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $node[\"Get Draft Record For Schedule Approve\"].json.id }}",
+            "HTML Body": "={{ $('Generate Schedule Links').item.json.htmlBody }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Message ID",
+              "displayName": "Message ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Thread ID",
+              "displayName": "Thread ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Receiver Email",
+              "displayName": "Receiver Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Original Message",
+              "displayName": "Original Message",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Reply",
+              "displayName": "Draft Reply",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "HTML Body",
+              "displayName": "HTML Body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Schedule",
+              "displayName": "Schedule",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        3264,
+        1360
+      ],
+      "id": "db453d58-f36a-4ee8-8e21-af6780f54b86",
+      "name": "Update Draft with HTML Body",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Draft",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $('Extract Value and Record ID For Schedule').item.json.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        1648
+      ],
+      "id": "18245147-1033-46dc-a818-0fd41d40863c",
+      "name": "Get Draft Record For Schedule Edit Start",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scheduleText = $('Parse Slack Block Response')\n  .first()\n  .json.message.blocks[1].text.text;\n\n// Process into array\nconst schedules = scheduleText\n  .split('\\n')\n  .slice(1)\n  .map(line => line.replace('• ', '').trim())\n  .filter(line => line.length > 0);\n\n// Return ONE item\nreturn [\n  {\n    schedules\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        1648
+      ],
+      "id": "e41d0276-2474-4a9c-96ea-f02fe501da73",
+      "name": "Extract Schedules Edit Start"
+    },
+    {
+      "parameters": {
+        "jsCode": "const scheduleText = $('Parse Slack Block Response')\n  .first()\n  .json.message.blocks[1].text.text;\n\n// Process into array\nconst schedules = scheduleText\n  .split('\\n')\n  .slice(1)\n  .map(line => line.replace('• ', '').trim())\n  .filter(line => line.length > 0);\n\n// Return ONE item\nreturn [\n  {\n    schedules\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1456
+      ],
+      "id": "8b27b86a-b827-4ce1-8010-a1b112a77c11",
+      "name": "Extract Schedules Approve"
+    },
+    {
+      "parameters": {
+        "jsCode": "const scheduleText = $('Parse Slack Block Response')\n  .first()\n  .json.state.values.edit_block.edited_text.value;\n\n// Process into array\nconst schedules = scheduleText\n  .split('\\n')\n  .map(line => line.replace('• ', '').trim())\n  .filter(line => line.length > 0);\n\n// Return ONE item\nreturn [\n  {\n    schedules\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1840
+      ],
+      "id": "13cf8d96-3adf-4664-b5a4-d9217d95b29d",
+      "name": "Extract Schedules Edit Submit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const draftText = $('Parse Slack Block Response')\n  .first()\n  .json.state.values.edit_block.edited_text.value;\n\n// Process into array\nconst draft = draftText\n  .split('\\n')\n  .map(line => line.replace('• ', '').trim())\n  .filter(line => line.length > 0);\n\n// Return ONE item\nreturn [\n  {\n    draft\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1072
+      ],
+      "id": "d8e81c01-5664-4429-81ba-f4ca477416d9",
+      "name": "Extract Edited Draft"
+    },
+    {
+      "parameters": {
+        "base": {
+          "__rl": true,
+          "value": "appM1wU3E7LW0fdF4",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl5cXo36uhp0Ajdv",
+          "mode": "list",
+          "cachedResultName": "Follow-Up",
+          "cachedResultUrl": "https://airtable.com/appM1wU3E7LW0fdF4/tbl5cXo36uhp0Ajdv"
+        },
+        "id": "={{ $('Extract Value and Record ID For Draft').item.json.recordId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1408,
+        1072
+      ],
+      "id": "69658089-815b-4adf-8502-efd4ea895be1",
+      "name": "Get Draft Record For Edit Submit",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "fbGiCme6rRQyu8RK",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  threadId: $input.first().json['Thread ID'],\n  messageId: $input.first().json['Message ID'],\n  draftReply: $input.first().json['Draft Reply'],\n  htmlBody: $input.first().json['HTML Body']\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        688
+      ],
+      "id": "a73fa26e-bbf5-43b3-9ec9-1331fef4b1fd",
+      "name": "Normalize Draft Record For Approve"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  threadId: $input.first().json['Thread ID'],\n  messageId: $input.first().json['Message ID'],\n  draftReply: $('Extract Edited Draft').first().json.draft[0],\n  htmlBody: $input.first().json['HTML Body']\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        1072
+      ],
+      "id": "5a49ec83-38bc-4069-8261-d9135c80f369",
+      "name": "Normalize Draft Record For Edit Submit"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Booking Confirmed</title>\n  <style>\n    body { font-family: sans-serif; text-align: center; padding: 50px; }\n    h1 { color: #4CAF50; }\n    a { color: #2196F3; text-decoration: none; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <h1>Thanks for clicking!</h1>\n  <p>Your booking request has been received.</p>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        2352
+      ],
+      "id": "8698835e-b6df-4185-b054-d0e30e3c2d48",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Parse Slack Block Response').item.json.container.channel_id }}",
+          "mode": "id"
+        },
+        "ts": "={{ $('Parse Slack Block Response').item.json.message.ts }}",
+        "messageType": "block",
+        "blocksUi": "={\n  \"blocks\": {{ JSON.stringify($json.blocks) }}\n}",
+        "updateFields": {},
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        672,
+        1936
+      ],
+      "id": "66eec2e8-7f76-4737-975e-e931db9cbb55",
+      "name": "Update Slack Blocks To Be Disabled",
+      "webhookId": "cce56e96-f5ea-49a0-9ffc-bbdbf2e1c29b",
+      "credentials": {
+        "slackApi": {
+          "id": "CT0nZsXnAfAPphgQ",
+          "name": "Slack HITL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst blocks = input.message.blocks;\nconst action = input.actions[0].action_id;\n\n// Block IDs to remove entirely\nconst BLOCKS_TO_REMOVE = new Set([\n  \"approve_block\",\n  \"edit_block\",        // remove input blocks entirely\n  \"reject_block\",\n  \"automation_footer\"  // optional future footer\n]);\n\n// 1. Remove all buttons\nfunction removeAllButtons(blocks) {\n  return blocks\n    .map(block => {\n      // Remove accessory buttons\n      if (block.accessory?.type === \"button\") {\n        const { accessory, ...rest } = block;\n        return rest;\n      }\n\n      // Remove button elements inside actions block\n      if (block.type === \"actions\") {\n        const nonButtonElements = (block.elements || []).filter(\n          el => el.type !== \"button\"\n        );\n\n        return {\n          ...block,\n          elements: nonButtonElements,\n        };\n      }\n\n      return block;\n    })\n    // Remove empty actions blocks\n    .filter(block => {\n      if (block.type === \"actions\") {\n        return block.elements && block.elements.length > 0;\n      }\n      return true;\n    });\n}\n\n// 2. Remove known action/input + automation blocks\nfunction removeUnwantedBlocks(blocks) {\n  return blocks.filter(block => {\n    // Remove blocks by block_id\n    if (BLOCKS_TO_REMOVE.has(block.block_id)) {\n      return false;\n    }\n\n    // Fallback: remove automation footer by content\n    const text = block.text?.text || \"\";\n    const isAutomationFooter =\n      text.startsWith(\"_Automated with this\") &&\n      text.includes(\"n8n\");\n\n    return !isAutomationFooter;\n  });\n}\n\n// 3. Add status block for approve/reject/edit_start/edit_submit\nfunction addStatus(blocks, action) {\n  let statusText = \"\";\n\n  if (action === \"approve_action\") statusText = \"✅ *Approved*\";\n  if (action === \"reject_action\") statusText = \"❌ *Rejected*\";\n  if (action === \"edit_action\") statusText = \"✏️ *Editing started*\";\n  if (action === \"edit_submit\") statusText = \"✏️ *Editing submitted*\";\n\n  if (!statusText) return blocks;\n\n  return [\n    ...blocks,\n    {\n      type: \"context\",\n      elements: [\n        {\n          type: \"mrkdwn\",\n          text: statusText,\n        },\n      ],\n    },\n  ];\n}\n\n// === Pipeline ===\nconst noButtons = removeAllButtons(blocks);\nconst cleanedBlocks = removeUnwantedBlocks(noButtons);\nconst finalBlocks = addStatus(cleanedBlocks, action);\n\nreturn [\n  {\n    json: {\n      blocks: finalBlocks,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1936
+      ],
+      "id": "65d1c043-0f43-4d65-8835-78506c612442",
+      "name": "Modify Slack Blocks for Disabling"
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email": {
+      "main": [
+        [
+          {
+            "node": "Identify Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identify Intent": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent JSON": {
+      "main": [
+        [
+          {
+            "node": "Split Out Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tasks": {
+      "main": [
+        []
+      ]
+    },
+    "Get a board": {
+      "main": [
+        [
+          {
+            "node": "Get many lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many lists": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many labels": {
+      "main": [
+        [
+          {
+            "node": "Get Label ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Label ID": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Combine Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Merge": {
+      "main": [
+        [
+          {
+            "node": "Create Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft reply": {
+      "main": [
+        [
+          {
+            "node": "Create Draft Record For Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Slack Block Response": {
+      "main": [
+        [
+          {
+            "node": "Interaction",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Modify Slack Blocks for Disabling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get response from Slack Blocks Actions": {
+      "main": [
+        [
+          {
+            "node": "Parse Slack Block Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft Record For Approve": {
+      "main": [
+        [
+          {
+            "node": "Normalize Draft Record For Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft Record For Edit Start": {
+      "main": [
+        [
+          {
+            "node": "Escape Characters in Edit Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply to Thread on Approve": {
+      "main": [
+        [
+          {
+            "node": "Delete Record After Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Actions": {
+      "main": [
+        [
+          {
+            "node": "Switch Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Intent": {
+      "main": [
+        [
+          {
+            "node": "Get many labels",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get a board",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escape Characters in Edit Start": {
+      "main": [
+        [
+          {
+            "node": "Send Edit Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Schedule Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approve/Edit/Reject Block For Draft": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Schedule Suggestions": {
+      "main": [
+        [
+          {
+            "node": "Draft (Schedule) Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interaction": {
+      "main": [
+        [
+          {
+            "node": "Extract Value and Record ID For Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Value and Record ID For Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Value and Record ID For Draft": {
+      "main": [
+        [
+          {
+            "node": "Switch Draft Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Draft Record For Draft": {
+      "main": [
+        [
+          {
+            "node": "Escape Characters in Draft Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Draft Record For Schedule": {
+      "main": [
+        [
+          {
+            "node": "Escape Characters in Schedule Actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escape Characters in Draft Actions": {
+      "main": [
+        [
+          {
+            "node": "Send Approve/Edit/Reject Block For Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escape Characters in Schedule Actions": {
+      "main": [
+        [
+          {
+            "node": "Send Approve/Edit/Reject Block For Scheduling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Value and Record ID For Schedule": {
+      "main": [
+        [
+          {
+            "node": "Switch Schedule Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Draft Action": {
+      "main": [
+        [
+          {
+            "node": "Get Draft Record For Approve",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Draft Record For Edit Start",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Edited Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Record After Draft Reject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Schedule Action": {
+      "main": [
+        [
+          {
+            "node": "Extract Schedules Approve",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Draft Record For Schedule Edit Start",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Schedules Edit Submit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Record After Schedule Reject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Schedule Input": {
+      "main": [
+        [
+          {
+            "node": "Parse Normalized Schedule JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Normalized Schedule JSON": {
+      "main": [
+        [
+          {
+            "node": "If Normalizing Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Normalizing Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get Draft Record For Schedule Approve",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error Message on Failed Schedule Normalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to ISO": {
+      "main": [
+        [
+          {
+            "node": "Generate Schedule Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Schedule Tokens": {
+      "main": [
+        [
+          {
+            "node": "Create Schedule Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Schedule Record": {
+      "main": [
+        [
+          {
+            "node": "Generate Schedule Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Schedule Links": {
+      "main": [
+        [
+          {
+            "node": "Update Draft with HTML Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft Record For Schedule Approve": {
+      "main": [
+        [
+          {
+            "node": "Convert to ISO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft (Schedule) Reply": {
+      "main": [
+        [
+          {
+            "node": "Create Draft Record For Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escape Characters in Schedule Approve": {
+      "main": [
+        [
+          {
+            "node": "Send Approve/Edit/Reject Block For Schedule Draft Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receiver Clicks Schedule Link": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Schedule Token": {
+      "main": [
+        [
+          {
+            "node": "Check Schedule Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Schedule Availability": {
+      "main": [
+        [
+          {
+            "node": "If Schedule Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Schedule Available": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Schedule Not Available Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Get All by Group Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All by Group Token": {
+      "main": [
+        [
+          {
+            "node": "Delete Schedule Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Draft with HTML Body": {
+      "main": [
+        [
+          {
+            "node": "Escape Characters in Schedule Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft Record For Schedule Edit Start": {
+      "main": [
+        [
+          {
+            "node": "Extract Schedules Edit Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Schedules Edit Start": {
+      "main": [
+        [
+          {
+            "node": "Send Schedule Edit Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Schedules Approve": {
+      "main": [
+        [
+          {
+            "node": "Normalize Schedule Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Schedules Edit Submit": {
+      "main": [
+        [
+          {
+            "node": "Normalize Schedule Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Edited Draft": {
+      "main": [
+        [
+          {
+            "node": "Get Draft Record For Edit Submit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Draft Record For Edit Submit": {
+      "main": [
+        [
+          {
+            "node": "Normalize Draft Record For Edit Submit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Draft Record For Approve": {
+      "main": [
+        [
+          {
+            "node": "Reply to Thread on Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Draft Record For Edit Submit": {
+      "main": [
+        [
+          {
+            "node": "Reply to Thread on Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Schedule Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modify Slack Blocks for Disabling": {
+      "main": [
+        [
+          {
+            "node": "Update Slack Blocks To Be Disabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19d44b1740a4ae80",
+          "threadId": "19d44b1626f1c0d9",
+          "labelIds": [
+            "UNREAD",
+            "IMPORTANT",
+            "SENT",
+            "INBOX"
+          ],
+          "sizeEstimate": 1941,
+          "headers": {
+            "mime-version": "MIME-Version: 1.0",
+            "date": "Date: Wed, 1 Apr 2026 00:19:24 +0800",
+            "message-id": "Message-ID: <CAN3i=nk2Y0Z-TXJsMdrfPORhJMs9XwheFAvLYvuk3o5w7NOmug@mail.gmail.com>",
+            "subject": "Subject: Example",
+            "from": "From: Nathan <devwedeloper@gmail.com>",
+            "to": "To: Nathan <devwedeloper@gmail.com>",
+            "content-type": "Content-Type: multipart/alternative; boundary=\"000000000000336912064e5455fa\""
+          },
+          "html": "<div dir=\"ltr\"><div class=\"gmail-gs\" style=\"margin:0px;min-width:0px;padding:0px 0px 20px;width:auto;font-family:&quot;Google Sans&quot;,Roboto,RobotoDraft,Helvetica,Arial,sans-serif;font-size:medium\"><div class=\"gmail-\"><div class=\"gmail-ii gmail-gt\" id=\"gmail-:ue\" style=\"direction:ltr;margin:8px 0px 0px;padding:0px;font-size:0.875rem;overflow-x:hidden\"><div class=\"gmail-a3s gmail-aiL\" id=\"gmail-:n2\" style=\"direction:ltr;font-variant-numeric:normal;font-variant-east-asian:normal;font-variant-alternates:normal;font-size-adjust:none;font-kerning:auto;font-feature-settings:normal;font-stretch:normal;font-size:small;line-height:1.5;font-family:Arial,Helvetica,sans-serif;overflow:auto hidden\"><div id=\"gmail-avWBGd-48\"><div dir=\"ltr\">Hello, have you done the xyz task yet which is due soon like this week? I would also like to schedule a meeting with you, any time would do. Do tell me when you&#39;re available</div><div class=\"gmail-yj6qo\"></div><div class=\"gmail-adL\"></div></div></div></div><div class=\"gmail-WhmR8e\" id=\"gmail-avWBGd-49\" style=\"clear:both\"></div></div></div><br class=\"gmail-Apple-interchange-newline\"></div>\n",
+          "text": "Hello, have you done the xyz task yet which is due soon like this week? I\nwould also like to schedule a meeting with you, any time would do. Do tell\nme when you're available\n",
+          "textAsHtml": "<p>Hello, have you done the xyz task yet which is due soon like this week? I<br/>would also like to schedule a meeting with you, any time would do. Do tell<br/>me when you&apos;re available</p>",
+          "subject": "Example",
+          "date": "2026-03-31T16:19:24.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "devwedeloper@gmail.com",
+                "name": "Nathan"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Nathan</span> &lt;<a href=\"mailto:devwedeloper@gmail.com\" class=\"mp_address_email\">devwedeloper@gmail.com</a>&gt;</span>",
+            "text": "\"Nathan\" <devwedeloper@gmail.com>"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "devwedeloper@gmail.com",
+                "name": "Nathan"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Nathan</span> &lt;<a href=\"mailto:devwedeloper@gmail.com\" class=\"mp_address_email\">devwedeloper@gmail.com</a>&gt;</span>",
+            "text": "\"Nathan\" <devwedeloper@gmail.com>"
+          },
+          "messageId": "<CAN3i=nk2Y0Z-TXJsMdrfPORhJMs9XwheFAvLYvuk3o5w7NOmug@mail.gmail.com>"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Identify Intent": [
+      {
+        "json": {
+          "content": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"actions\": [\n    {\n      \"type\": \"create_task\",\n      \"payload\": {\n        \"title\": \"Complete the xyz task\",\n        \"deadline\": \"this week\",\n        \"priority\": \"high\"\n      }\n    },\n    {\n      \"type\": \"schedule_meeting\",\n      \"payload\": {\n        \"time_range\": \"any time\"\n      }\n    },\n    {\n      \"type\": \"draft_reply\",\n      \"payload\": {\n        \"message\": \"I'll have the xyz task completed this week. I'm also available to meet. Here are a few times that work for me: [Suggest times].\"\n      }\n    }\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP",
+          "index": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Draft reply": [
+      {
+        "json": {
+          "content": {
+            "parts": [
+              {
+                "text": "Of course. The xyz task is on track to be completed by the end of this week.\n\nI am available to meet tomorrow afternoon or Thursday morning; please let me know what time works best for you."
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP",
+          "index": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "AI Agent": [
+      {
+        "json": {
+          "output": "```json\n{\n  \"suggestions\": [\n    \"Monday 10 AM - 11 AM\",\n    \"Tuesday 2 PM - 3 PM\",\n    \"Wednesday 11 AM - 12 PM\",\n    \"Thursday 3 PM - 4 PM\"\n  ]\n}\n```"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Normalize Schedule Input": [
+      {
+        "json": {
+          "content": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"success\": true,\n  \"data\": [\n    {\n      \"name\": \"Monday 10 AM - 11 AM\",\n      \"date\": \"2026-04-06\",\n      \"start\": \"10:00\",\n      \"end\": \"11:00\"\n    },\n    {\n      \"name\": \"Tuesday 2 PM - 3 PM\",\n      \"date\": \"2026-04-07\",\n      \"start\": \"14:00\",\n      \"end\": \"15:00\"\n    },\n    {\n      \"name\": \"Wednesday 11 AM - 12 PM\",\n      \"date\": \"2026-04-08\",\n      \"start\": \"11:00\",\n      \"end\": \"12:00\"\n    },\n    {\n      \"name\": \"Thursday 3 PM - 4 PM\",\n      \"date\": \"2026-04-09\",\n      \"start\": \"15:00\",\n      \"end\": \"16:00\"\n    }\n  ]\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP",
+          "index": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Draft (Schedule) Reply": [
+      {
+        "json": {
+          "content": {
+            "parts": [
+              {
+                "text": "Thanks for checking in. The xyz task is on track for completion by Wednesday. For a meeting, I'm available Tuesday at 2 PM or Thursday at 10 AM. Please let me know which time works best for you."
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP",
+          "index": 0
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "a865986d-0a2b-4a50-869d-ac0e4dd11318",
+  "activeVersionId": null,
+  "versionCounter": 1815,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-03-28T15:33:12.234Z",
+      "createdAt": "2026-03-28T15:33:12.234Z",
+      "role": "workflow:owner",
+      "workflowId": "IWFEljFQ5IRVk1qf",
+      "projectId": "i8s6WjRzOcbmDlU1",
+      "project": {
+        "updatedAt": "2026-03-13T09:19:18.890Z",
+        "createdAt": "2026-03-13T09:09:40.317Z",
+        "id": "i8s6WjRzOcbmDlU1",
+        "name": "Nathan devwedeloper@gmail.com <devwedeloper@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "60f6f711-6d6b-45fe-9fc1-b19cb62eef91"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
