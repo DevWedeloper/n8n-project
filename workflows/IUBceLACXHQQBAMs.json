@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-18T14:05:34.638Z",
+  "updatedAt": "2026-04-12T21:50:38.759Z",
   "createdAt": "2026-03-14T14:20:24.775Z",
   "id": "IUBceLACXHQQBAMs",
   "name": "YouTube Transcript & Summary",
@@ -846,9 +846,9 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "a927b705-3fad-447a-b8ce-26cf50e743e5",
+  "versionId": "3812ac27-a091-4120-8683-b5431fdfcce3",
   "activeVersionId": null,
-  "versionCounter": 558,
+  "versionCounter": 560,
   "triggerCount": 1,
   "tags": [],
   "shared": [
@@ -871,7 +871,7 @@
     }
   ],
   "versionMetadata": {
-    "name": "Version a927b705",
-    "description": ""
+    "name": null,
+    "description": null
   }
 }
